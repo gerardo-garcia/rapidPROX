@@ -28,7 +28,12 @@ RUN git clone https://github.com/rapidPROX/rapidPROX.git
 WORKDIR /opt/rapidPROX/rapid
 
 # Install Python package with your dependencies
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir \
+    requests \
+    future \
+    paramiko \
+    scp \
+    prometheus-client
 
 RUN ln -s /usr/local/bin/python3 /usr/bin/python3
 
