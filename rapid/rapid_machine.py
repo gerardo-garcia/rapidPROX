@@ -262,7 +262,7 @@ class RapidMachine(object):
         if (not self.configonly) and self.machine_params[
                 'prox_socket'] and self.machine_params['prox_launch_exit']:
             self.socket.quit_prox()
-            self._client.scp_get('/prox.log', '{}/{}.prox.log'.format(
+            self._client.scp_get('prox.log', '{}/{}.prox.log'.format(
                 self.resultsdir, self.name))
 
     def connect_prox(self):
