@@ -28,6 +28,7 @@ import subprocess
 import socket
 from rapid_log import RapidLog
 from rapid_sshclient import SSHClient
+import urllib.request
 
 class prox_ctrl(object):
     def __init__(self, ip, key=None, user=None, password = None, \
@@ -40,7 +41,7 @@ class prox_ctrl(object):
         self._password = password
         self._proxsock = []
         self._vim = vim
-        if self._vim != "k8s":
+        if self._vim != "kubernetes":
             self._sshclient = SSHClient(
                 ip=ip,
                 user=user,
@@ -56,15 +57,15 @@ class prox_ctrl(object):
         return self._ip
 
     def http_get(self, path):
-        import urllib.request
 
         url = f"http://{self._ip}:{self._admin_port}{path}"
 
         with urllib.request.urlopen(url, timeout=10) as response:
             return response.read().decode("utf-8")
 
+
     def test_connection(self):
-        if self._vim == "k8s":
+        if self._vim == "kubernetes":
             RapidLog.debug("Connected to machine on %s" % self._ip)
             return self.http_get("/status")
 
@@ -113,7 +114,7 @@ class prox_ctrl(object):
             sock.quit()
 
     def run_cmd(self, command):
-        if self._vim == "k8s":
+        if self._vim == "kubernetes":
             import urllib.request
             import urllib.parse
 
@@ -133,10 +134,17 @@ class prox_ctrl(object):
             )
 
             with urllib.request.urlopen(req, timeout=30) as response:
-                return response.read().decode("utf-8")
+                return response.read().decode("utf-8").rstrip()
 
+        # SSH path
         self._sshclient.run_cmd(command)
-        return self._sshclient.get_output()
+        output = self._sshclient.get_output()
+
+        # 👉 unify type here
+        if isinstance(output, bytes):
+            output = output.decode("utf-8")
+
+        return output.rstrip()
 
     def prox_sock(self):
         """Connect to the PROX instance on remote system.
@@ -152,7 +160,7 @@ class prox_ctrl(object):
             return None
 
     def scp_put(self, src, dst):
-        if getattr(self, "_vim", None) == "k8s":
+        if getattr(self, "_vim", None) == "kubernetes":
             import urllib.request
             import urllib.parse
             import os
@@ -184,7 +192,7 @@ class prox_ctrl(object):
 
 
     def scp_get(self, src, dst):
-        if getattr(self, "_vim", None) == "k8s":
+        if getattr(self, "_vim", None) == "kubernetes":
             import urllib.request
             import urllib.parse
 

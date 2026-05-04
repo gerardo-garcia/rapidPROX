@@ -166,26 +166,46 @@ class RapidConfigParser(object):
                 else:
                     machine[option] = config.get(section, option)
             machines.append(dict(machine))
+
+        machines_by_name = {machine['name']: machine for machine in machines}
+
         for machine in machines:
             dp_ports = []
-            if 'dest_vm' in machine.keys():
+
+            if 'dest_machine' in machine.keys():
+                dest_machine_name = machine['dest_machine']
+
+                if dest_machine_name not in machines_by_name:
+                    RapidLog.exception(
+                        "Machine {} refers to unknown dest_machine {}".format(
+                            machine.get('name', '<unknown>'),
+                            dest_machine_name
+                        )
+                    )
+                    raise Exception("Unknown dest_machine")
+
+                dest_machine = machines_by_name[dest_machine_name]
+
                 index = 1
-                while True: 
+                while True:
                     dp_ip_key = 'dp_ip{}'.format(index)
                     dp_mac_key = 'dp_mac{}'.format(index)
-                    if dp_ip_key in machines[int(machine['dest_vm'])-1].keys():
-                        if dp_mac_key in machines[int(machine['dest_vm'])-1].keys():
-                            dp_port = {'ip': machines[int(machine['dest_vm'])-1][dp_ip_key],
-                                    'mac' : machines[int(machine['dest_vm'])-1][dp_mac_key]}
-                        else:
-                            dp_port = {'ip': machines[int(machine['dest_vm'])-1][dp_ip_key],
-                                    'mac' : None}
+
+                    if dp_ip_key in dest_machine.keys():
+                        dp_port = {
+                            'ip': dest_machine[dp_ip_key],
+                            'mac': dest_machine.get(dp_mac_key, None)
+                        }
+
                         dp_ports.append(dict(dp_port))
                         index += 1
                     else:
                         break
-                    machine['dest_ports'] = list(dp_ports)
+
+                machine['dest_ports'] = list(dp_ports)
             gw_ips = []
+
+            
             if 'gw_vm' in machine.keys():
                 index = 1
                 while True:
