@@ -6,7 +6,7 @@ Format: PushGateway
 ;URL:
   part1: http://testresults.opnfv.org/test/api/v1/results
 URL:
-  part1: /metrics/job/rapid/
+  part1: http://pushgateway:9091/metrics/job/rapid/
 FlowSizeTest:                           
   Flows: Flows
   Size: Size
