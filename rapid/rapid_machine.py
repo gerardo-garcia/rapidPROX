@@ -94,7 +94,7 @@ class RapidMachine(object):
         """Read list of cpus on which we allowed to execute
         """
         cmd = "cat /proc/1/task/1/status | grep Cpus_allowed_list | awk '{print $2}'"
-        cpuset_cpus = self._client.run_cmd(cmd).decode().rstrip()
+        cpuset_cpus = self._client.run_cmd(cmd)
         RapidLog.debug('{} ({}): Allocated cpuset: {}'.format(self.name, self.ip, cpuset_cpus))
         self.cpu_mapping = self.expand_list_format(cpuset_cpus)
         RapidLog.debug('{} ({}): Expanded cpuset: {}'.format(self.name, self.ip, self.cpu_mapping))
