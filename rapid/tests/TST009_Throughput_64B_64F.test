@@ -26,7 +26,7 @@ lat_percentile = 99
 [TestM1]
 name = Generator
 config_file = configs/gen.cfg
-dest_vm = 2
+dest_machine = Swap
 mcore = [0]
 gencores = [1]
 latcores = [3]

@@ -1,346 +1,153 @@
 #!/usr/bin/env python3
 
 import os
+import signal
 import subprocess
-import time
-import stat
-import logging
-import re
-import uuid
+import urllib.parse
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-def run_cmd(cmd, shell=True):
-    """Run a shell command and return (returncode, stdout, stderr)."""
-    result = subprocess.run(cmd, shell=shell, capture_output=True, text=True)
-    return result.returncode, result.stdout, result.stderr
+BASE_DIR = os.getcwd()
+print(f"Control server base dir: {BASE_DIR}", flush=True)
 
-
-def create_tun():
-    """Create /dev/net/tun device if it does not exist."""
-    try:
-        os.makedirs("/dev/net", exist_ok=True)
-
-        tun_path = "/dev/net/tun"
-
-        if not os.path.exists(tun_path):
-            # Create character device node (major 10, minor 200)
-            mode = stat.S_IFCHR | 0o600
-            os.mknod(tun_path, mode, os.makedev(10, 200))
-        else:
-            # Ensure correct permissions
-            os.chmod(tun_path, 0o600)
-
-    except PermissionError:
-        print("Permission denied while creating /dev/net/tun (requires root)")
-    except Exception as e:
-        print(f"Error creating tun device: {e}")
+def reap_children(signum, frame):
+    while True:
+        try:
+            pid, status = os.waitpid(-1, os.WNOHANG)
+            if pid == 0:
+                break
+            print(f"Reaped child process pid={pid}", flush=True)
+        except ChildProcessError:
+            break
 
 
-def setup_ssh():
-    """Ensure SSH runtime directory exists and start SSH service."""
-    try:
-        os.makedirs("/var/run/sshd", exist_ok=True)
-    except Exception as e:
-        print(f"Error creating /var/run/sshd: {e}")
-        return
+def prox_status():
+    result = subprocess.run(
+        "ps -ef | grep '[p]rox' || true",
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True
+    )
 
-    rc, out, err = run_cmd("service ssh start")
-    if rc != 0:
-        print(f"Failed to start SSH service: {err}")
+    if result.stdout.strip():
+        return f"PROX running:\n{result.stdout}"
+    return "PROX not running\n"
 
+def resolve_path(path):
+    if os.path.isabs(path):
+        return path
+    return os.path.join(BASE_DIR, path)
 
-def setup_sudoers():
-    """Add passwordless sudo access for 'rapid' user."""
-    sudoers_line = "rapid ALL=(ALL) NOPASSWD:ALL\n"
+def make_control_handler():
+    class ControlHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/status":
+                self.reply(200, prox_status())
 
-    try:
-        # Check if entry already exists to avoid duplicates
-        with open("/etc/sudoers", "r") as f:
-            if sudoers_line.strip() in f.read():
+            if self.path.startswith("/file"):
+                parsed = urllib.parse.urlparse(self.path)
+                query = urllib.parse.parse_qs(parsed.query)
+
+                path = query.get("path", [""])[0]
+                
+                if not path:
+                    self.reply(400, "missing path\n")
+                    return
+
+                path = resolve_path(path)
+
+                if not os.path.exists(path):
+                    self.reply(404, "file not found: {}\n".format(path))
+                    return
+
+                with open(path, "rb") as f:
+                    data = f.read()
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
                 return
 
-        with open("/etc/sudoers", "a") as f:
-            f.write(sudoers_line)
+            self.reply(404, "not found\n")
 
-    except PermissionError:
-        print("Permission denied while modifying /etc/sudoers (requires root)")
-    except Exception as e:
-        print(f"Error updating sudoers: {e}")
+        def do_PUT(self):
+            if not self.path.startswith("/file"):
+                self.reply(404, "not found\n")
+                return
 
-class Pod:
-    """Class which represents test pods.
-    For example with traffic gen, forward/swap applications, etc
-    """
-    def __init__(self, name):
-        self._name = name
-        self._log = logging.getLogger(__name__)
-        self.allow_parameter = "allow"
+            parsed = urllib.parse.urlparse(self.path)
+            query = urllib.parse.parse_qs(parsed.query)
 
-    def expand_list_format(self, list):
-        """Expand cpuset list format provided as comma-separated list of
-        numbers and ranges of numbers. For more information please see
-        https://man7.org/linux/man-pages/man7/cpuset.7.html
-        """
-        list_expanded = []
-        for num in list.split(','):
-            if '-' in num:
-                num_range = num.split('-')
-                list_expanded += range(int(num_range[0]), int(num_range[1]) + 1)
-            else:
-                list_expanded.append(int(num))
-        return list_expanded
+            path = query.get("path", [""])[0]
+            if not path:
+                self.reply(400, "missing path\n")
+                return
 
-    def read_cpuset(self):
-        """Read list of cpus on which we allowed to execute
-        """
-        cmd = "cat /proc/1/task/1/status | grep Cpus_allowed_list | awk '{print $2}'"
-        cpuset_cpus = self._client.run_cmd(cmd).decode().rstrip()
-        RapidLog.debug('{} ({}): Allocated cpuset: {}'.format(self.name, self.ip, cpuset_cpus))
-        self.cpu_mapping = self.expand_list_format(cpuset_cpus)
-        RapidLog.debug('{} ({}): Expanded cpuset: {}'.format(self.name, self.ip, self.cpu_mapping))
+            length = int(self.headers.get("Content-Length", 0))
+            data = self.rfile.read(length)
 
-        # Log CPU core mapping for user information
-        cpu_mapping_str = ''
-        for i in range(len(self.cpu_mapping)):
-            cpu_mapping_str = cpu_mapping_str + '[' + str(i) + '->' + str(self.cpu_mapping[i]) + '], '
-        cpu_mapping_str = cpu_mapping_str[:-2]
-        RapidLog.debug('{} ({}): CPU mapping: {}'.format(self.name, self.ip, cpu_mapping_str))
+            with open(path, "wb") as f:
+                f.write(data)
 
-    def remap_cpus(self, cpus):
-        """Convert relative cpu ids provided as function parameter to match
-        cpu ids from allocated list
-        """
-        cpus_remapped = []
-        for cpu in cpus:
-            cpus_remapped.append(self.cpu_mapping[cpu])
-        return cpus_remapped
+            self.reply(200, f"file written: {path}\n")
 
-    def remap_all_cpus(self):
-        """Convert relative cpu ids for different parameters (mcore, cores)
-        """
-        if self.cpu_mapping is None:
-            RapidLog.debug('{} ({}): cpu mapping is not defined! Please check the configuration!'.format(self.name, self.ip))
-            return
-        for key in self.machine_params.keys():
-            if 'core' in key:
-                cpus_remapped = self.remap_cpus(self.machine_params[key])
-                RapidLog.debug('{} ({}): {} {} remapped to {}'.format(self.name, self.ip, key, self.machine_params[key], cpus_remapped))
-                self.machine_params[key] = cpus_remapped
-        return
+        def do_POST(self):
+            if self.path != "/cmd":
+                self.reply(404, "not found\n")
+                return
 
-    def extract_first_pci_address(self, text):
-        # PCI-address pattern: 4 hex numbers : 2 hex numbers : 2 hex numbers . 1 number
-        pattern = r'\b[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]\b'
-        match = re.search(pattern, text)
-        return match.group(0) if match else None
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8")
 
-    def version_tuple(self, version):
-        """Convert version string (e.g. '20.11.0') to a tuple of integers."""
-        return tuple(int(part) for part in version.split('.') if part.isdigit())
+            params = urllib.parse.parse_qs(body)
+            command = params.get("command", [""])[0]
+
+            if not command:
+                self.reply(400, "missing command\n")
+                return
+
+            result = subprocess.run(
+                command,
+                shell=True,
+                cwd="/opt/rapid",
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True
+            )
+
+            output = result.stdout
+            if result.returncode != 0:
+                output += f"\n[exit_code={result.returncode}]\n"
+
+            self.reply(200, output)
+
+        def reply(self, code, text):
+            body = text.encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+    return ControlHandler
 
 
-    def get_sriov_dev_mac(self):
-        """Get the SRIOV VF device assigned by the Kubernetes SRIOV network device plugin.
+def start_control_server():
+    print("Starting control server on port 9090", flush=True)
+    handler = make_control_handler()
+    ThreadingHTTPServer(("0.0.0.0", 9090), handler).serve_forever()
 
-        The function reads the PCI device assignment from local environment variables,
-        reads the local DPDK version from /opt/rapid/dpdk_version, runs the local
-        port_info_app utility, and extracts the MAC address for the assigned VF.
-
-        Return 0 in case of successful configuration.
-        Otherwise return -1.
-        """
-        self._log.info("Checking assigned SRIOV VF for POD %s", self._name)
-
-        # Read PCIDEVICE environment variables
-        pci_envs = [f"{key}={value}" for key, value in os.environ.items() if "PCIDEVICE" in key]
-        if not pci_envs:
-            self._log.error("No PCIDEVICE environment variables found")
-            return -1
-
-        env_output = "\n".join(pci_envs)
-        self._log.debug("Environment variable %s", env_output)
-
-        # Extract first PCI address using existing helper
-        self._sriov_vf = self.extract_first_pci_address(env_output)
-
-        if self._sriov_vf is None:
-            self._log.error("Failed to parse SRIOV VF PCI address from environment variables")
-            return -1
-
-        self._log.debug("Using first SRIOV VF %s", self._sriov_vf)
-
-        # Read DPDK version
-        self._log.info("Checking DPDK version for POD %s", self._name)
-        try:
-            with open("/opt/rapid/dpdk_version", "r", encoding="utf-8") as file_handle:
-                dpdk_version = file_handle.read().strip()
-        except Exception as exc:
-            self._log.error("Failed to check DPDK version. Error %s", exc)
-            return -1
-
-        self._log.debug("DPDK version %s", dpdk_version)
-
-        # Correct version comparison
-        try:
-            if self.version_tuple(dpdk_version) >= self.version_tuple("20.11.0"):
-                self.allow_parameter = "allow"
-            else:
-                self.allow_parameter = "pci-whitelist"
-        except Exception as exc:
-            self._log.error("Failed to compare DPDK version %s: %s", dpdk_version, exc)
-            return -1
-
-        # Run port_info_app
-        self._log.info("Getting MAC address for assigned SRIOV VF %s", self._sriov_vf)
-
-        result = subprocess.run(
-            [
-                "/opt/rapid/port_info_app",
-                "-n",
-                "4",
-                f"--{self.allow_parameter}",
-                self._sriov_vf,
-            ],
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0:
-            error_text = result.stderr.strip() or result.stdout.strip()
-            self._log.error("Failed to get MAC address! Error %s", error_text)
-            return -1
-
-        cmd_output = result.stdout.strip()
-        self._log.debug(cmd_output)
-
-        # Parse MAC address
-        self._sriov_vf_mac = None
-        for line in cmd_output.splitlines():
-            if line.startswith("Port 0 MAC: "):
-                self._sriov_vf_mac = line[12:]
-                break
-
-        if self._sriov_vf_mac is None:
-            self._log.error("Failed to parse MAC address from port_info_app output")
-            return -1
-
-        self._log.debug("MAC %s", self._sriov_vf_mac)
-        return 0
-
-    def generate_lua(self, appendix = ''):
-        self.LuaFileName = 'parameters.lua'
-        with open(self.LuaFileName, "w") as LuaFile:
-            LuaFile.write('require "helper"\n')
-            LuaFile.write('name="%s"\n'% self._name)
-#           for index, dp_port in enumerate(self.dp_ports, start = 1):
-#               LuaFile.write('local_ip{}="{}"\n'.format(index, dp_port['ip']))
-#               LuaFile.write('local_hex_ip{}=convertIPToHex(local_ip{})\n'.format(index, index))
-            eal_line = 'eal=\"--file-prefix {}{} --{} {} --force-max-simd-bitwidth=512\n'.format(
-                        self._name, str(uuid.uuid4()), self.allow_parameter,
-                        self._sriov_vf)
-            LuaFile.write(eal_line)
-            return 0
-            for key in self.machine_params.keys():
-                if 'core' in key:
-                    cores = ','.join(map(str,self.machine_params[key]))
-                    cores = (f'"{cores}"') 
-                    LuaFile.write('{}={}\n'.format(key,cores))
-            if 'ports' in self.machine_params.keys():
-                LuaFile.write('ports="%s"\n'% ','.join(map(str,
-                    self.machine_params['ports'])))
-            if 'dest_ports' in self.machine_params.keys():
-                for index, dest_port in enumerate(self.machine_params['dest_ports'], start = 1):
-                    LuaFile.write('dest_ip{}="{}"\n'.format(index, dest_port['ip']))
-                    LuaFile.write('dest_hex_ip{}=convertIPToHex(dest_ip{})\n'.format(index, index))
-                    if dest_port['mac']:
-                        LuaFile.write('dest_hex_mac{}="{}"\n'.format(index ,
-                            dest_port['mac'].replace(':',' ')))
-            if 'gw_vm' in self.machine_params.keys():
-                for index, gw_ip in enumerate(self.machine_params['gw_ips'],
-                        start = 1):
-                    LuaFile.write('gw_ip{}="{}"\n'.format(index, gw_ip))
-                    LuaFile.write('gw_hex_ip{}=convertIPToHex(gw_ip{})\n'.
-                            format(index, index))
-#            LuaFile.write(appendix)
-
-    def expand_list_format(self, list):
-        """Expand cpuset list format provided as comma-separated list of
-        numbers and ranges of numbers. For more information please see
-        https://man7.org/linux/man-pages/man7/cpuset.7.html
-        """
-        list_expanded = []
-        for num in list.split(','):
-            if '-' in num:
-                num_range = num.split('-')
-                list_expanded += range(int(num_range[0]), int(num_range[1]) + 1)
-            else:
-                list_expanded.append(int(num))
-        return list_expanded
-
-    def read_cpuset(self):
-        """Read list of cpus on which we allowed to execute
-        """
-        cmd = "cat /proc/1/task/1/status | grep Cpus_allowed_list | awk '{print $2}'"
-        cpuset_cpus = self._client.run_cmd(cmd).decode().rstrip()
-        RapidLog.debug('{} ({}): Allocated cpuset: {}'.format(self.name, self.ip, cpuset_cpus))
-        self.cpu_mapping = self.expand_list_format(cpuset_cpus)
-        RapidLog.debug('{} ({}): Expanded cpuset: {}'.format(self.name, self.ip, self.cpu_mapping))
-
-        # Log CPU core mapping for user information
-        cpu_mapping_str = ''
-        for i in range(len(self.cpu_mapping)):
-            cpu_mapping_str = cpu_mapping_str + '[' + str(i) + '->' + str(self.cpu_mapping[i]) + '], '
-        cpu_mapping_str = cpu_mapping_str[:-2]
-        RapidLog.debug('{} ({}): CPU mapping: {}'.format(self.name, self.ip, cpu_mapping_str))
-
-    def remap_cpus(self, cpus):
-        """Convert relative cpu ids provided as function parameter to match
-        cpu ids from allocated list
-        """
-        cpus_remapped = []
-        for cpu in cpus:
-            cpus_remapped.append(self.cpu_mapping[cpu])
-        return cpus_remapped
-
-    def remap_all_cpus(self):
-        """Convert relative cpu ids for different parameters (mcore, cores)
-        """
-        if self.cpu_mapping is None:
-            RapidLog.debug('{} ({}): cpu mapping is not defined! Please check the configuration!'.format(self.name, self.ip))
-            return
-        for key in self.machine_params.keys():
-            if 'core' in key:
-                cpus_remapped = self.remap_cpus(self.machine_params[key])
-                RapidLog.debug('{} ({}): {} {} remapped to {}'.format(self.name, self.ip, key, self.machine_params[key], cpus_remapped))
-                self.machine_params[key] = cpus_remapped
-        return
 
 def main():
-    """Main entry point equivalent to the bash script."""
-
-    # Create TUN device
-    #create_tun()
-    logging.basicConfig(level=logging.DEBUG)
-    pod = Pod("rapid_pod")
-    if pod.get_sriov_dev_mac() != 0:
-        sys.exit(1)
-
-    if pod.generate_lua() != 0:
-        sys.exit(1)
-    # Indicate system is ready
+    signal.signal(signal.SIGCHLD, reap_children)
     try:
         open("/opt/rapid/system_ready_for_rapid", "a").close()
     except Exception as e:
-        print(f"Error creating readiness file: {e}")
+        print(f"Error creating readiness file: {e}", flush=True)
 
-    # Setup SSH service
-    #setup_ssh()
-
-    # Configure sudoers
-    #setup_sudoers()
-
-    # Sleep indefinitely (equivalent to 'sleep infinity')
-    #while True:
-    #    time.sleep(3600)
+    start_control_server()
 
 
 if __name__ == "__main__":

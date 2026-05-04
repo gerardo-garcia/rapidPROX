@@ -31,7 +31,7 @@ from rapid_sshclient import SSHClient
 
 class prox_ctrl(object):
     def __init__(self, ip, key=None, user=None, password = None, \
-            admin_port = 22, socket_port = 8474):
+            admin_port = 22, socket_port = 8474,  vim = None ):
         self._ip   = ip
         self._admin_port = admin_port
         self._socket_port = socket_port
@@ -39,13 +39,35 @@ class prox_ctrl(object):
         self._user = user
         self._password = password
         self._proxsock = []
-        self._sshclient = SSHClient(ip = ip, user = user, password = password,
-                rsa_private_key = key, timeout = None, ssh_port = admin_port)
+        self._vim = vim
+        if self._vim != "k8s":
+            self._sshclient = SSHClient(
+                ip=ip,
+                user=user,
+                password=password,
+                rsa_private_key=key,
+                timeout=None,
+                ssh_port=admin_port
+            )
+        else:
+            self._sshclient = None
 
     def ip(self):
         return self._ip
 
+    def http_get(self, path):
+        import urllib.request
+
+        url = f"http://{self._ip}:{self._admin_port}{path}"
+
+        with urllib.request.urlopen(url, timeout=10) as response:
+            return response.read().decode("utf-8")
+
     def test_connection(self):
+        if self._vim == "k8s":
+            RapidLog.debug("Connected to machine on %s" % self._ip)
+            return self.http_get("/status")
+
         attempts = 1
         RapidLog.debug("Trying to connect to machine \
                 on %s, attempt: %d" % (self._ip, attempts))
@@ -91,6 +113,28 @@ class prox_ctrl(object):
             sock.quit()
 
     def run_cmd(self, command):
+        if self._vim == "k8s":
+            import urllib.request
+            import urllib.parse
+
+            url = "http://{}:{}/cmd".format(self._ip, self._admin_port)
+
+            data = urllib.parse.urlencode({
+                "command": command
+            }).encode("utf-8")
+
+            req = urllib.request.Request(
+                url,
+                data=data,
+                method="POST",
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
+            )
+
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return response.read().decode("utf-8")
+
         self._sshclient.run_cmd(command)
         return self._sshclient.get_output()
 
@@ -108,13 +152,76 @@ class prox_ctrl(object):
             return None
 
     def scp_put(self, src, dst):
+        if getattr(self, "_vim", None) == "k8s":
+            import urllib.request
+            import urllib.parse
+            import os
+
+            url = "http://{}:{}/file".format(self._ip, self._admin_port)
+
+            with open(src, "rb") as f:
+                data = f.read()
+
+            encoded_dst = urllib.parse.quote(dst, safe="")
+
+            req = urllib.request.Request(
+                url + "?path=" + encoded_dst,
+                data=data,
+                method="PUT",
+                headers={
+                    "Content-Type": "application/octet-stream"
+                }
+            )
+
+            with urllib.request.urlopen(req, timeout=30) as response:
+                output = response.read().decode("utf-8")
+
+            RapidLog.info("HTTP copying from {} to {}:{}".format(src, self._ip, dst))
+            return output
+
         self._sshclient.scp_put(src, dst)
         RapidLog.info("Copying from {} to {}:{}".format(src, self._ip, dst))
 
+
     def scp_get(self, src, dst):
+        if getattr(self, "_vim", None) == "k8s":
+            import urllib.request
+            import urllib.parse
+
+            # Preserve old behavior: old code expected src relative to /home/<user>
+            # In k8s mode, use absolute paths if possible.
+            remote_src = src
+            if not remote_src.startswith("/"):
+                remote_src = "/opt/rapid/" + remote_src
+
+            encoded_src = urllib.parse.quote(remote_src, safe="")
+
+            url = "http://{}:{}/file?path={}".format(
+                self._ip,
+                self._admin_port,
+                encoded_src
+            )
+
+            with urllib.request.urlopen(url, timeout=30) as response:
+                data = response.read()
+
+            with open(dst, "wb") as f:
+                f.write(data)
+
+            RapidLog.info("HTTP copying from {}:{} to {}".format(
+                self._ip,
+                remote_src,
+                dst
+            ))
+            return dst
+
         self._sshclient.scp_get('/home/' + self._user + src, dst)
-        RapidLog.info("Copying from {}:/home/{}{} to {}".format(self._ip,
-            self._user, src, dst))
+        RapidLog.info("Copying from {}:/home/{}{} to {}".format(
+            self._ip,
+            self._user,
+            src,
+            dst
+        ))
 
 class prox_sock(object):
     def __init__(self, sock):

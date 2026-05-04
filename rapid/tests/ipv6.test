@@ -27,7 +27,7 @@ ipv6 = True
 [TestM1]
 name = Generator
 config_file = configs/genv6.cfg
-dest_vm = 2
+dest_machine = Swap
 mcore = [0]
 gencores = [1]
 latcores = [3]

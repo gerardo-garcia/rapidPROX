@@ -58,6 +58,40 @@ class RapidTestManager(object):
     def get_defaults():
         return (RapidDefaults.test_params)
 
+    def prepare_generator_destinations(self):
+        machines_by_name = {machine.name: machine for machine in self.machines}
+
+        # Dan per generator destination opzoeken
+        for machine in self.machines:
+            if not isinstance(machine, RapidGeneratorMachine):
+                continue
+
+            dest_name = machine.machine_params.get("dest_machine")
+            if not dest_name:
+                RapidLog.exception(
+                    "Generator {} has no dest_machine configured".format(machine.name)
+                )
+                raise Exception("Missing dest_machine")
+
+            if dest_name not in machines_by_name:
+                RapidLog.exception(
+                    "Generator {} refers to unknown dest_machine {}".format(
+                        machine.name, dest_name
+                    )
+                )
+                raise Exception("Unknown dest_machine")
+
+            dest = machines_by_name[dest_name]
+            machine.machine_params["dest_ports"] = dest.get_dp_ports()
+
+            RapidLog.debug(
+                "Generator {} destination {} MAC {}".format(
+                    machine.name,
+                    dest.name,
+                    machine.machine_params["dest_ports"]
+                )
+            )
+
     def run_tests(self, test_params):
         test_params = RapidConfigParser.parse_config(test_params)
         monitor_gen = monitor_sut = False
@@ -104,6 +138,9 @@ class RapidTestManager(object):
                             sut_machine = machine
             self.machines.append(machine)
         RapidLog.debug(test_params)
+
+        self.prepare_generator_destinations()
+
         try:
             prox_executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(self.machines))
             self.future_to_prox = {prox_executor.submit(machine.start_prox): machine for machine in self.machines}

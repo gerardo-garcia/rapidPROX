@@ -41,6 +41,20 @@ class RapidMachine(object):
         self.dp_ports = []
         self.dpdk_port_index = []
         self.configonly = configonly
+        self.machine_params = machine_params
+        self.vim = vim
+        self.cpu_mapping = None
+        if 'config_file' in self.machine_params.keys():
+            PROXConfigfile =  open (self.machine_params['config_file'], 'r')
+            PROXConfig = PROXConfigfile.read()
+            PROXConfigfile.close()
+            self.all_tasks_for_this_cfg = set(re.findall(r"task\s*=\s*(\d+)",PROXConfig))
+        if self.machine_params['prox_socket']:
+            self._client = prox_ctrl(self.ip, self.key, self.user,
+                    self.password, self.admin_port, self.socket_port, self.vim)
+            self.get_dpdk_version()
+            self._client.test_connection()
+            self.get_sriov_dev_mac()
         index = 1
         while True:
             ip_key = 'dp_ip{}'.format(index)
@@ -49,21 +63,16 @@ class RapidMachine(object):
                 if mac_key in machine_params.keys():
                     dp_port = {'ip': machine_params[ip_key], 'mac' : machine_params[mac_key]}
                 else:
-                    dp_port = {'ip': machine_params[ip_key], 'mac' : None}
+                    dp_port = {'ip': machine_params[ip_key], 'mac' : self._sriov_vf_mac}
                 self.dp_ports.append(dict(dp_port))
                 self.dpdk_port_index.append(index - 1)
                 index += 1
             else:
                 break
-        self.machine_params = machine_params
-        self.vim = vim
-        self.cpu_mapping = None
-        if 'config_file' in self.machine_params.keys():
-            PROXConfigfile =  open (self.machine_params['config_file'], 'r')
-            PROXConfig = PROXConfigfile.read()
-            PROXConfigfile.close()
-            self.all_tasks_for_this_cfg = set(re.findall("task\s*=\s*(\d+)",PROXConfig))
 
+    def get_dp_ports(self):
+        return self.dp_ports
+    
     def get_cores(self):
         return (self.machine_params['cores'])
 
@@ -131,6 +140,50 @@ class RapidMachine(object):
                 result = self._client.run_cmd(DevBindFileName)
                 RapidLog.debug('devbind.sh running for port {} on {} {}'.format(index, self.name, result))
 
+    def extract_first_pci_address(self, text):
+        # PCI-address pattern: 4 hex numbers : 2 hex numbers : 2 hex numbers . 1 number
+        pattern = r'\b[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]\b'
+        match = re.search(pattern, text)
+        return match.group(0) if match else None
+
+    def get_dpdk_version(self):
+        # find DPDK version
+        RapidLog.info("Checking DPDK version for POD %s" % self.name)
+        cmd = 'cat /opt/rapid/dpdk_version'
+        dpdk_version = self._client.run_cmd(cmd)
+        if (dpdk_version >= '20.11.0'):
+            self._allow_parameter = 'allow'
+        else:
+            self._allow_parameter = 'pci-whitelist'
+        RapidLog.debug("DPDK version %s" % dpdk_version)
+
+    def get_sriov_dev_mac(self):
+        """Get assigned by k8s SRIOV network device plugin SRIOV VF devices.
+        Return 0 in case of sucessfull configuration.
+        Otherwise return -1.
+        """
+        RapidLog.info("Checking assigned SRIOV VF for POD %s" % self.name)
+        cmd_output = self._client.run_cmd("env | grep PCIDEVIC")
+        RapidLog.debug("Environment variable %s" % cmd_output)
+
+        # Parse environment variable
+        self._sriov_vf = self.extract_first_pci_address(cmd_output)
+        RapidLog.debug("Using first SRIOV VF %s" % self._sriov_vf)
+
+        RapidLog.info("Getting MAC address for assigned SRIOV VF %s" % \
+                self._sriov_vf)
+        cmd_output = self._client.run_cmd("sudo /opt/rapid/port_info_app -n 4 \
+                --{} {}".format(self._allow_parameter, self._sriov_vf))
+
+        # Parse MAC address
+        RapidLog.debug(cmd_output)
+        cmd_output = cmd_output.splitlines()
+        for line in cmd_output:
+            if line.startswith("Port 0 MAC: "):
+                self._sriov_vf_mac = line[12:]
+
+        RapidLog.debug("MAC %s" % self._sriov_vf_mac)
+
     def generate_lua(self, appendix = ''):
         self.LuaFileName = 'parameters-{}-{}.lua'.format(self.ip, self.admin_port)
         with open(self.LuaFileName, "w") as LuaFile:
@@ -140,15 +193,11 @@ class RapidMachine(object):
                 LuaFile.write('local_ip{}="{}"\n'.format(index, dp_port['ip']))
                 LuaFile.write('local_hex_ip{}=convertIPToHex(local_ip{})\n'.format(index, index))
             if self.vim in ['kubernetes']:
-                cmd = 'cat /opt/rapid/dpdk_version'
-                dpdk_version = self._client.run_cmd(cmd).decode().rstrip()
-                if (dpdk_version >= '20.11.0'):
-                    allow_parameter = 'allow'
-                else:
-                    allow_parameter = 'pci-whitelist'
+                cmd = 'cat /opt/rapid/k8s_sriov_device_plugin_envs'
+                dpdk_version = self._client.run_cmd(cmd)
                 eal_line = 'eal=\"--file-prefix {}{} --{} {} --force-max-simd-bitwidth=512'.format(
-                        self.name, str(uuid.uuid4()), allow_parameter,
-                        self.machine_params['dp_pci_dev'])
+                        self.name, str(uuid.uuid4()), self._allow_parameter,
+                        self._sriov_vf)
                 looking_for_qat = True
                 index = 0
                 while (looking_for_qat):
@@ -165,7 +214,7 @@ class RapidMachine(object):
             for key in self.machine_params.keys():
                 if 'core' in key:
                     cores = ','.join(map(str,self.machine_params[key]))
-                    cores = (f'"{cores}"') 
+                    cores = (f'"{cores}"')
                     LuaFile.write('{}={}\n'.format(key,cores))
             if 'ports' in self.machine_params.keys():
                 LuaFile.write('ports="%s"\n'% ','.join(map(str,
@@ -189,9 +238,6 @@ class RapidMachine(object):
 
     def start_prox(self, autostart=''):
         if self.machine_params['prox_socket']:
-            self._client = prox_ctrl(self.ip, self.key, self.user,
-                    self.password, self.admin_port, self.socket_port)
-            self._client.test_connection()
             if self.vim in ['OpenStack']:
                 self.devbind()
             if self.vim in ['kubernetes']:

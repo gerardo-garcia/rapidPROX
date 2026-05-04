@@ -64,11 +64,11 @@ config_file = configs/gen.cfg
 # The values of the remaining parameters in this section are passed on to the
 # PROX configuration file through a file called parameters.lua
 #
-# The next parameter defines the destination Test machine index. This will be
+# The next parameter defines the destination Test machine. This will be
 # used by a generator to define which destination MAC or IP addresses should be
 # used in the generated packets. The fact that we use MAC or IP addresses is
 # defined by the use of l2 or l3.
-dest_vm = 2
+dest_machine = Swap
 # The next parameter defines the GW Test machine index. This will be
 # used by a generator to define which GW MAC or IP addresses should be
 # used in the generated packets. The fact that we use MAC or IP addresses is

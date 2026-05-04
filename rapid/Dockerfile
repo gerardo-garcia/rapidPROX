@@ -82,7 +82,7 @@ RUN git clone https://github.com/rapidPROX/rapidPROX.git \
 	&& echo "${COMMIT_ID}" > ${BUILD_DIR}/commit_id \
 	&& meson build \
 	&& ninja -C build \
-	&& cp ${BUILD_DIR}/rapidPROX/rapid/start.sh ${BUILD_DIR}/start.sh \
+	&& cp ${BUILD_DIR}/rapidPROX/rapid/start.py ${BUILD_DIR}/start.py \
 	&& cp ${BUILD_DIR}/rapidPROX/rapid/rapid_rsa_key.pub ${BUILD_DIR}/rapid_rsa_key.pub \
 	&& cp ${BUILD_DIR}/rapidPROX/src/build/prox ${BUILD_DIR}/prox
 
@@ -100,7 +100,7 @@ RUN ldd ${BUILD_DIR}/prox | awk '$2 ~ /=>/ {print $3}' >> ${BUILD_DIR}/list_of_i
 	&& echo "${BUILD_DIR}/port_info_app" >> ${BUILD_DIR}/list_of_install_components \
 	&& echo "${BUILD_DIR}/commit_id" >> ${BUILD_DIR}/list_of_install_components \
 	&& echo "${BUILD_DIR}/dpdk_version" >> ${BUILD_DIR}/list_of_install_components \
-	&& echo "${BUILD_DIR}/start.sh" >> ${BUILD_DIR}/list_of_install_components \
+	&& echo "${BUILD_DIR}/start.py" >> ${BUILD_DIR}/list_of_install_components \
 	&& echo "${BUILD_DIR}/rapid_rsa_key.pub" >> ${BUILD_DIR}/list_of_install_components \
 	&& LIBDIR=$(pkg-config --variable=libdir libdpdk) \
 	&& find "$LIBDIR" -not -path '*/\.*' >> ${BUILD_DIR}/list_of_install_components \
@@ -120,7 +120,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
 	DEBIAN_FRONTEND=noninteractive \
 	apt-get install -y \
-		unzip sudo openssh-server liblua5.3-dev libibverbs-dev \
+		unzip sudo openssh-server liblua5.3-dev libibverbs-dev busybox curl vim \
 	&& rm -rf /var/lib/apt/lists/*
 
 ARG BUILD_DIR="/opt/rapid"
@@ -144,6 +144,7 @@ RUN useradd -rm -d /home/rapid -s /bin/bash -g root -G sudo rapid \
 	&& chown rapid:root /home/rapid/.ssh/authorized_keys \
 	&& chmod 600 /home/rapid/.ssh/authorized_keys \
 # Copy startup script
-	&& cp ${BUILD_DIR}/start.sh /start.sh \
-	&& chmod +x /start.sh
-ENTRYPOINT ["/start.sh"]
+##	&& cp ${BUILD_DIR}/start.py /start.py \
+	&& chmod +x ${BUILD_DIR}/start.py
+WORKDIR ${BUILD_DIR}
+ENTRYPOINT ["/opt/rapid/start.py"]
