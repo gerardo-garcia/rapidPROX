@@ -25,6 +25,7 @@ standard_library.install_aliases()
 from builtins import object
 import os
 import sys
+import ipaddress
 import concurrent.futures
 from concurrent.futures import ALL_COMPLETED
 from rapid_cli import RapidCli
@@ -49,6 +50,13 @@ class RapidTestManager(object):
         Init Function
         """
         self.machines = []
+        start_dp_ip = os.getenv("START_DP_IP")
+        self.ip_index = 0
+        if start_dp_ip:
+            # Example: START_DP_IP="10.0.12.200/8"
+            iface = ipaddress.ip_interface(start_dp_ip)
+            self.base_ip = iface.ip
+            self.prefixlen = iface.network.prefixlen
 
     def __del__(self):
         for machine in self.machines:
@@ -101,6 +109,9 @@ class RapidTestManager(object):
         machine_names = []
         machine_counter = {}
         for machine_params in test_params['machines']:
+            if self.base_ip:
+                machine_params["dp_ip1"] = "{}/{}".format(self.base_ip + self.ip_index, self.prefixlen)
+                self.ip_index += 1          
             if machine_params['name'] not in machine_names:
                 machine_names.append(machine_params['name'])
                 machine_counter[machine_params['name']] = 1
