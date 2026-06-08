@@ -1,0 +1,61 @@
+# Copyright (C) 2023-2026 rapidPROX contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gen
+  namespace: prox
+  labels:
+    app: gen  
+spec:
+  containers:
+  - name: prox-container
+    image: 127.0.0.1:5000/prox:latest
+    imagePullPolicy: Always
+    securityContext:
+      privileged: true
+      capabilities:
+        add:
+          - IPC_LOCK
+          - SYS_ADMIN
+    volumeMounts:
+    - name: hugepages
+      mountPath: /dev/hugepages
+    resources:
+      requests:
+        cpu: 4
+        memory: 1Gi
+        hugepages-1Gi: 1Gi
+      limits:
+        cpu: 4
+        memory: 1Gi
+        hugepages-1Gi: 1Gi
+    ports:
+      - name: prox
+        containerPort: 8474
+      - name: control
+        containerPort: 9090
+  volumes:
+  - name: hugepages
+    emptyDir:
+      medium: HugePages-1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gen
+  namespace: prox
+spec:
+  selector:
+    app: gen
+  ports:
+    - name: prox
+      protocol: TCP
+      port: 8474
+      targetPort: prox
+    - name: control
+      protocol: TCP
+      port: 9090
+      targetPort: control
