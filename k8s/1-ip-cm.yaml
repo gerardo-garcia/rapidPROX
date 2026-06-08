@@ -1,0 +1,11 @@
+# Copyright (C) 2023-2026 rapidPROX contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ip-config
+  namespace: prox
+data:
+  START_DP_IP: "10.0.12.200/8"

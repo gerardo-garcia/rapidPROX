@@ -5,7 +5,4 @@
 
 set -ex
 
-source config
-
-docker build -t "${PROXIMAGENAME}" ./prox
-docker build -t "${RAPIDIMAGENAME}" ./rapid
+docker run -d --restart always -p 5000:5000 --name local-registry registry:3

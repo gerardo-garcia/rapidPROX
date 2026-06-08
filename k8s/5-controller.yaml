@@ -1,0 +1,22 @@
+# Copyright (C) 2023-2026 rapidPROX contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: controller
+  namespace: prox
+spec:
+  containers:
+    - name: controller
+      image: 127.0.0.1:5000/rapid:latest
+      imagePullPolicy: Always
+      #command: ["sh", "-c", "sleep infinity"]
+      command: ["sh", "-c", "./runrapid.py --runtime 1 --test tests/l2zeroloss.test && sleep infinity"]
+      env:
+        - name: START_DP_IP
+          valueFrom:
+            configMapKeyRef:
+              name: ip-config
+              key: START_DP_IP

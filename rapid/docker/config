@@ -1,0 +1,6 @@
+# Copyright (C) 2023-2026 rapidPROX contributors
+# SPDX-License-Identifier: Apache-2.0
+
+IMAGEREPOUSER="localhost:5000"
+PROXIMAGENAME="prox"
+RAPIDIMAGENAME="rapid"
