@@ -1,0 +1,57 @@
+prox has been deployed: {{ .Values.replicaCount }} replica(s) of {{ .Values.image.repository }}:{{ .Values.image.tag }}
+(StatefulSet {{ include "prox.fullname" . }}), each attached to the
+"{{ include "prox.fullname" . }}-dataplane" NetworkAttachmentDefinition
+({{ .Values.network.mode }}{{ if and (eq .Values.network.mode "sriov") (gt (int .Values.network.vlan) 0) }}, VLAN {{ .Values.network.vlan }}{{ end }}).
+{{- if .Values.controller.enabled }}
+
+A "rapid" controller ({{ include "prox.fullname" . }}-controller) is also
+deployed, already wired up with a rapid.env pointing at the replicas above
+(ordinal {{ include "prox.fullname" . }}-0 = M1, -1 = M2, ...) and the
+START_DP_IP ConfigMap -- no manual environment/machine-map authoring needed.
+
+1. Wait for everything to be ready:
+
+     kubectl -n {{ .Release.Namespace }} rollout status statefulset/{{ include "prox.fullname" . }}
+     kubectl -n {{ .Release.Namespace }} rollout status deployment/{{ include "prox.fullname" . }}-controller
+{{- if .Values.controller.runOnStart }}
+
+2. controller.runOnStart is enabled: a run of "{{ .Values.controller.test }}"
+   started automatically. Follow it with:
+
+     kubectl -n {{ .Release.Namespace }} logs -f deploy/{{ include "prox.fullname" . }}-controller
+{{- else }}
+
+2. Trigger a test run (the default machine.map already maps M1/M2/... onto
+   the StatefulSet ordinals 1:1, so no --map override is needed):
+
+     kubectl -n {{ .Release.Namespace }} exec -it deploy/{{ include "prox.fullname" . }}-controller -- \
+       ./runrapid.py --test {{ .Values.controller.test }} --runtime {{ .Values.controller.runtime }}
+
+   Set controller.runOnStart=true to have this happen automatically instead
+   (re-runs on every controller pod restart/upgrade too, so it's off by
+   default).
+{{- end }}
+
+   To run a different shipped test, `kubectl exec` in and pass any
+   `tests/*.test` file already in the rapid image, or add your own to
+   `controller.extraTestFiles` (mounted under tests/ in the controller pod)
+   for topologies the shipped tests don't cover (e.g. replicaCount > 2).
+{{- else }}
+
+controller.enabled is false: no controller pod was deployed. To drive a
+test yourself, list the replica pods' DNS names
+({{ include "prox.fullname" . }}-0.{{ include "prox.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local,
+-1, ...) and build a rapid.env pointing runrapid.py's [Mx] admin_ip at them
+(admin_port 9090, socket_port 8474, vim=kubernetes under [Varia]) -- see
+rapid/README and the top-level README.md. Dataplane IPs used *inside*
+generated test traffic come from the START_DP_IP ConfigMap this chart also
+creates:
+
+     kubectl -n {{ .Release.Namespace }} get configmap {{ include "prox.fullname" . }}-dataplane-ip -o jsonpath='{.data.START_DP_IP}'
+{{- end }}
+
+Prerequisites this chart does NOT install for you: Multus, and a device
+plugin advertising the "{{ .Values.network.resourceName }}" resource on your
+nodes (e.g. the SR-IOV Network Device Plugin). If the {{ include "prox.fullname" . }}
+pods stay Pending, check `kubectl -n {{ .Release.Namespace }} describe pod`
+for scheduling/resource errors first.

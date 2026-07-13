@@ -1,0 +1,68 @@
+{{/*
+Copyright (C) 2023-2026 rapidPROX contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+{{- if .Values.controller.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "prox.fullname" . }}-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "prox.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: controller
+  template:
+    metadata:
+      labels:
+        {{- include "prox.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: controller
+    spec:
+      containers:
+        - name: rapid
+          image: "{{ .Values.controller.image.repository }}:{{ .Values.controller.image.tag }}"
+          imagePullPolicy: {{ .Values.controller.image.pullPolicy }}
+          {{- if .Values.controller.runOnStart }}
+          # Runs one test immediately on start (and on every pod restart),
+          # then idles. Off by default -- see .Values.controller.runOnStart.
+          command:
+            - sh
+            - -c
+            - >-
+              ./runrapid.py --test {{ .Values.controller.test }}
+              --runtime {{ .Values.controller.runtime }} && sleep infinity
+          {{- end }}
+          env:
+            - name: START_DP_IP
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "prox.fullname" . }}-dataplane-ip
+                  key: START_DP_IP
+                  # Not present when .Values.dataplane.startIP is blanked out.
+                  optional: true
+          volumeMounts:
+            - name: rapid-env
+              mountPath: /opt/rapidPROX/rapid/rapid.env
+              subPath: rapid.env
+            {{- range $filename, $content := .Values.controller.extraTestFiles }}
+            - name: extra-test-files
+              mountPath: /opt/rapidPROX/rapid/tests/{{ $filename }}
+              subPath: {{ $filename }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+      volumes:
+        - name: rapid-env
+          configMap:
+            name: {{ include "prox.fullname" . }}-rapid-env
+        {{- if .Values.controller.extraTestFiles }}
+        - name: extra-test-files
+          configMap:
+            name: {{ include "prox.fullname" . }}-controller-testfiles
+        {{- end }}
+{{- end }}

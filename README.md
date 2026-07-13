@@ -146,6 +146,21 @@ cd k8s
 kubectl delete -f 0-ns.yaml
 ```
 
+## CI-published images and Helm chart
+
+`prox` and `rapid` images are automatically built and published to GitHub Container Registry on every push to `master` (and on version tags), see [.github/workflows/docker-publish.yml](./.github/workflows/docker-publish.yml):
+
+```
+ghcr.io/<owner>/prox:latest
+ghcr.io/<owner>/rapid:latest
+```
+
+A Helm chart at [charts/prox/](./charts/prox/) deploys a configurable-size StatefulSet of `prox` pods on a dedicated Multus network (SR-IOV or PCI passthrough, VLAN and IPAM configurable), plus a `rapid` controller pod already wired up to drive a throughput test between them — see [charts/prox/README.md](./charts/prox/README.md). It's published as an OCI artifact by [.github/workflows/helm-publish.yml](./.github/workflows/helm-publish.yml):
+
+```
+helm install prox oci://ghcr.io/<owner>/charts/prox --version <version> -n prox --create-namespace
+```
+
 ## Validated OS, k8s distribution and server/VM
 
 Ubuntu 24.04.4 LTS, k3s v1.34.6+k3s1, AWS EC2 c8i.2xlarge (with two added vNICs used as DPDK interfaces, host-device plugin, NAD and [k8s/host-device/](./k8s/host-device/)).

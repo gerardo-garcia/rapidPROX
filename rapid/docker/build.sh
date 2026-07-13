@@ -7,5 +7,9 @@ set -ex
 
 source config
 
-docker build -t "${PROXIMAGENAME}" ./prox
-docker build -t "${RAPIDIMAGENAME}" ./rapid
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+RAPID_VERSION="0.0.0+$(git -C "${REPO_ROOT}" rev-parse --short HEAD)"
+
+docker build -f prox/Dockerfile -t "${PROXIMAGENAME}" "${REPO_ROOT}"
+docker build -f rapid/Dockerfile --build-arg RAPID_VERSION="${RAPID_VERSION}" \
+        -t "${RAPIDIMAGENAME}" "${REPO_ROOT}"

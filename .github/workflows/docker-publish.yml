@@ -1,0 +1,87 @@
+# Copyright (C) 2023-2026 rapidPROX contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Builds and publishes the "prox" (DPDK/PROX engine) and "rapid" (Python
+# control plane) container images to GitHub Container Registry (GHCR).
+#
+# - Push to master  -> ghcr.io/<owner>/<image>:latest, :sha-<short>
+# - Push of a vX.Y.Z tag -> also ghcr.io/<owner>/<image>:X.Y.Z, :X.Y
+#
+# Images are private by default the first time GHCR creates a package. After
+# the first successful run, an owner/admin needs to set each package's
+# visibility to Public once, under
+# https://github.com/users/<owner>/packages/container/<image>/settings
+# (org-owned repos: Package settings -> Change visibility). This is a GHCR
+# permissions restriction that cannot be done with GITHUB_TOKEN alone.
+name: Publish Docker images
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*.*.*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: prox
+            dockerfile: rapid/docker/prox/Dockerfile
+            build-args: ""
+          - component: rapid
+            dockerfile: rapid/docker/rapid/Dockerfile
+            build-args: |
+              RAPID_VERSION=0.0.0-${{ github.sha }}
+    concurrency:
+      group: docker-publish-${{ matrix.component }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so PROX's own `git describe`-based version string
+          # (see src/meson.build) reflects real tags once any exist.
+          fetch-depth: 0
+
+      - name: Lowercase image owner
+        run: echo "IMAGE_OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "${GITHUB_ENV}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.IMAGE_OWNER }}/${{ matrix.component }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short,prefix=sha-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push ${{ matrix.component }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build-args }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}

@@ -1,0 +1,95 @@
+{{/*
+Copyright (C) 2023-2026 rapidPROX contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "prox.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prox.labels" . | nindent 4 }}
+spec:
+  # Ordinal identity (prox-0, prox-1, ...) gives each replica a deterministic
+  # DNS name under the governing Service below, which is what
+  # templates/rapid-env-configmap.yaml addresses them by -- no runtime
+  # discovery or RBAC needed to tell replicas apart.
+  serviceName: {{ include "prox.fullname" . }}
+  # Replicas are independent (no boot-time ordering dependency between
+  # them), so start them concurrently rather than waiting for ordinal 0 to
+  # become Ready before starting ordinal 1.
+  podManagementPolicy: Parallel
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "prox.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "prox.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        k8s.v1.cni.cncf.io/networks: {{ include "prox.fullname" . }}-dataplane
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.spreadAcrossNodes }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "prox.selectorLabels" . | nindent 14 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: prox
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            privileged: {{ .Values.securityContext.privileged }}
+            capabilities:
+              add: {{ .Values.securityContext.capabilities.add | toJson }}
+          ports:
+            - name: prox
+              containerPort: 8474
+            - name: control
+              containerPort: 9090
+          # The container's entrypoint (start.py) starts this HTTP control
+          # sidecar immediately; PROX itself is started later, on demand,
+          # via POST /cmd once runrapid.py has pushed config files to it.
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: control
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: hugepages
+              mountPath: /dev/hugepages
+          resources:
+            requests:
+              {{- toYaml .Values.resources.requests | nindent 14 }}
+              {{ .Values.network.resourceName }}: "1"
+            limits:
+              {{- toYaml .Values.resources.limits | nindent 14 }}
+              {{ .Values.network.resourceName }}: "1"
+      volumes:
+        - name: hugepages
+          emptyDir:
+            medium: {{ .Values.hugepagesMedium }}

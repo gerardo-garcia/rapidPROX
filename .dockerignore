@@ -1,0 +1,12 @@
+# Copyright (C) 2023-2026 rapidPROX contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# Build context for rapid/docker/*/Dockerfile is the repository root (see
+# each Dockerfile's header comment). .git is intentionally NOT excluded:
+# src/meson.build derives the PROX version from `git describe`.
+
+**/__pycache__/
+**/*.pyc
+src/build/
+src/subprojects/
+rapid/port_info/build/

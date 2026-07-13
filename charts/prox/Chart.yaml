@@ -1,0 +1,22 @@
+## Copyright (C) 2023-2026 rapidPROX contributors
+## SPDX-License-Identifier: Apache-2.0
+apiVersion: v2
+name: prox
+description: >-
+  Deploys PROX dataplane pods on a dedicated Multus network (SR-IOV or PCI
+  passthrough) so a rapidPROX peak-throughput test can run between them.
+type: application
+version: 0.1.0
+appVersion: "latest"
+home: https://github.com/rapidPROX/rapidPROX
+sources:
+  - https://github.com/rapidPROX/rapidPROX
+keywords:
+  - dpdk
+  - sr-iov
+  - multus
+  - nfv
+  - performance-testing
+maintainers:
+  - name: rapidPROX contributors
+    url: https://github.com/rapidPROX/rapidPROX

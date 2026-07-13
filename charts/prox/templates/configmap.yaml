@@ -1,0 +1,18 @@
+{{/*
+Copyright (C) 2023-2026 rapidPROX contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+{{- if .Values.dataplane.startIP }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "prox.fullname" . }}-dataplane-ip
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prox.labels" . | nindent 4 }}
+data:
+  # Consumed as the START_DP_IP env var by runrapid.py (see
+  # RapidTestManager in rapid/runrapid.py), which hands out sequential
+  # dataplane IPs to each machine it configures, starting at this address.
+  START_DP_IP: {{ .Values.dataplane.startIP | quote }}
+{{- end }}
