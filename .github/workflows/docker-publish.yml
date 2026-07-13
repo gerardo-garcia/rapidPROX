@@ -38,7 +38,7 @@ jobs:
           - component: rapid
             dockerfile: rapid/docker/rapid/Dockerfile
             build-args: |
-              RAPID_VERSION=0.0.0-${{ github.sha }}
+              RAPID_VERSION=0.0.0+${{ github.sha }}
     concurrency:
       group: docker-publish-${{ matrix.component }}-${{ github.ref }}
       cancel-in-progress: true
