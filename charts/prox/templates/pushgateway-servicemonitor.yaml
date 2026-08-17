@@ -1,0 +1,29 @@
+{{/*
+Copyright (C) 2023-2026 rapidPROX contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+{{- if and .Values.pushgateway.enabled .Values.pushgateway.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "prox.fullname" . }}-pushgateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pushgateway
+    {{- with .Values.pushgateway.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "prox.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: pushgateway
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.pushgateway.serviceMonitor.interval }}
+{{- end }}

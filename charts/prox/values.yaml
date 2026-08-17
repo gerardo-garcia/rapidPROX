@@ -167,3 +167,18 @@ pushgateway:
     limits:
       cpu: 200m
       memory: 128Mi
+
+  serviceMonitor:
+    # Requires the Prometheus Operator CRDs (ServiceMonitor) -- e.g.
+    # kube-prometheus-stack, or Rancher's rancher-monitoring. Off by
+    # default since not every cluster has these installed; enabling this
+    # on one that doesn't will fail the install. When on, lets an
+    # already-running Prometheus scrape this Pushgateway automatically so
+    # results show up in Grafana without manual port-forwarding.
+    enabled: false
+    interval: 30s
+    # Extra labels merged onto the ServiceMonitor object, for clusters
+    # whose Prometheus only discovers ServiceMonitors matching specific
+    # labels (e.g. release: rancher-monitoring) instead of all of them --
+    # check your Prometheus CR's spec.serviceMonitorSelector.
+    labels: {}

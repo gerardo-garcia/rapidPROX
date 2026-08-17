@@ -95,6 +95,9 @@ helm install prox ./charts/prox -n prox --create-namespace
 | `pushgateway.enabled` | `true` | Deploy a companion Prometheus Pushgateway that the controller's default test pushes `FlowSizeTest` results to (`rapid/format.yaml`, "Format: PushGateway"). Its `Service` is deliberately named exactly `pushgateway` (not release-prefixed) because that hostname is hardcoded in `format.yaml` -- only one release per namespace can usefully enable this. Disable if you already run one under that name, or don't need pushed results. |
 | `pushgateway.image.repository` / `tag` / `pullPolicy` | `prom/pushgateway` / `v1.11.3` / `IfNotPresent` | [Pushgateway](https://github.com/prometheus/pushgateway) image. |
 | `pushgateway.resources` | 50m/32Mi req, 200m/128Mi lim | Pushgateway pod resources. |
+| `pushgateway.serviceMonitor.enabled` | `false` | Deploy a `ServiceMonitor` (Prometheus Operator CRD) so an already-running Prometheus (e.g. kube-prometheus-stack, Rancher's rancher-monitoring) scrapes this Pushgateway automatically -- results then show up in Grafana without manual port-forwarding. Requires the CRD to already exist on the cluster; leave `false` if it doesn't. |
+| `pushgateway.serviceMonitor.interval` | `30s` | Scrape interval. |
+| `pushgateway.serviceMonitor.labels` | `{}` | Extra labels merged onto the `ServiceMonitor`, for Prometheus instances that only discover ServiceMonitors matching specific labels (check the Prometheus CR's `spec.serviceMonitorSelector`). |
 
 ## Ports
 
