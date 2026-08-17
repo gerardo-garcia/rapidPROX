@@ -26,4 +26,12 @@ spec:
     - port: http
       path: /metrics
       interval: {{ .Values.pushgateway.serviceMonitor.interval }}
+      # Pushed metrics already carry their own "job"/"instance" labels
+      # (e.g. job="rapid", set by runrapid.py's push URL, see
+      # rapid/format.yaml). Without honorLabels, Prometheus's default
+      # relabeling overwrites those with this scrape target's own identity
+      # (job="pushgateway") and renames the originals to exported_job/
+      # exported_instance instead -- not what you want when querying by
+      # job="rapid" in Grafana.
+      honorLabels: true
 {{- end }}
