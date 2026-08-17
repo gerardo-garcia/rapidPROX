@@ -13,8 +13,11 @@ image:
   # Published by .github/workflows/docker-publish.yml as
   # ghcr.io/<repository_owner>/prox. Defaults to this repo's own GHCR
   # namespace; override to match wherever your fork/org actually publishes.
+  # Pinned to a released version rather than "latest": mutable tags are
+  # rejected outright by some clusters' admission policies, and a pinned
+  # tag makes what a given release actually runs reproducible.
   repository: ghcr.io/gerardo-garcia/prox
-  tag: latest
+  tag: "0.1.0"
   pullPolicy: IfNotPresent
 
 nameOverride: ""
@@ -111,9 +114,10 @@ controller:
   enabled: true
   image:
     # Published by .github/workflows/docker-publish.yml as
-    # ghcr.io/<repository_owner>/rapid.
+    # ghcr.io/<repository_owner>/rapid. Pinned to a released version for the
+    # same reasons as image.tag above.
     repository: ghcr.io/gerardo-garcia/rapid
-    tag: latest
+    tag: "0.1.0"
     pullPolicy: IfNotPresent
 
   # Default test/runtime used when triggering runrapid.py manually, and the
@@ -142,3 +146,24 @@ controller:
     limits:
       cpu: 500m
       memory: 512Mi
+
+# Companion Prometheus Pushgateway that the controller's default test
+# pushes FlowSizeTest results to (see rapid/format.yaml, "Format:
+# PushGateway"). On by default so a fresh install works out of the box;
+# disable if you already run a Pushgateway elsewhere -- note the target
+# host is hardcoded in format.yaml as "pushgateway", so pointing at an
+# external one currently means running your own with that same in-cluster
+# name, not a values.yaml override.
+pushgateway:
+  enabled: true
+  image:
+    repository: prom/pushgateway
+    tag: v1.11.3
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

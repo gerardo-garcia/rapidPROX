@@ -8,10 +8,12 @@ between them.
 
 Resources deployed: a `StatefulSet` (ordinal identity -- `prox-0`, `prox-1`,
 ...) for the PROX replicas, one `NetworkAttachmentDefinition`, a headless
-governing `Service`, a `ConfigMap` with the dataplane base IP, and (unless
+governing `Service`, a `ConfigMap` with the dataplane base IP, (unless
 `controller.enabled=false`) a controller `Deployment` plus a `ConfigMap`
 holding a ready-to-use `rapid.env` generated from the StatefulSet's ordinal
-DNS names -- no manual environment/machine-map authoring needed. See
+DNS names -- no manual environment/machine-map authoring needed -- and
+(unless `pushgateway.enabled=false`) a Prometheus Pushgateway `Deployment` +
+`Service` that the controller's default test pushes results to. See
 `templates/NOTES.txt` (`helm get notes` after install, or `helm install
 --dry-run` locally) for the exact command to trigger a run.
 
@@ -64,7 +66,7 @@ helm install prox ./charts/prox -n prox --create-namespace
 |---|---|---|
 | `replicaCount` | `2` | Number of PROX replicas. The test runs between two of them; see chart NOTES. |
 | `image.repository` | `ghcr.io/gerardo-garcia/prox` | prox image, published by `.github/workflows/docker-publish.yml` as `ghcr.io/<repository_owner>/prox`. Override to point at your own fork/registry. |
-| `image.tag` | `latest` | Image tag. |
+| `image.tag` | `0.1.0` | Image tag. Pinned to a released version rather than `latest` -- some clusters' admission policies reject mutable tags outright. |
 | `image.pullPolicy` | `IfNotPresent` | |
 | `network.mode` | `sriov` | `sriov` (SR-IOV VF via sriov-cni, supports VLAN tagging) or `hostDevice` (whole PCI device via host-device CNI, no CNI-level VLAN tagging). |
 | `network.resourceName` | `intel.com/intel_sriov_vfio` | Device-plugin resource backing the dataplane NIC. Used for both the Multus `resourceName` annotation and the pod's resource request/limit. |
@@ -84,12 +86,15 @@ helm install prox ./charts/prox -n prox --create-namespace
 | `nodeSelector` / `tolerations` / `affinity` | `{}` / `[]` / `{}` | Standard pod scheduling overrides for the PROX StatefulSet. |
 | `podAnnotations` / `podLabels` | `{}` | Extra metadata merged onto PROX pods. |
 | `controller.enabled` | `true` | Deploy the "rapid" controller pod + its generated `rapid.env` ConfigMap. Set `false` to deploy PROX infrastructure only (see NOTES for the manual flow). |
-| `controller.image.repository` / `tag` / `pullPolicy` | `ghcr.io/gerardo-garcia/rapid` / `latest` / `IfNotPresent` | rapid image, published by `.github/workflows/docker-publish.yml` as `ghcr.io/<repository_owner>/rapid`. |
+| `controller.image.repository` / `tag` / `pullPolicy` | `ghcr.io/gerardo-garcia/rapid` / `0.1.0` / `IfNotPresent` | rapid image, published by `.github/workflows/docker-publish.yml` as `ghcr.io/<repository_owner>/rapid`. |
 | `controller.test` | `tests/basicrapid.test` | Default `.test` file (path inside the rapid image) used for manual runs and for `runOnStart`. |
 | `controller.runtime` | `10` | Seconds per test iteration, maps to `runrapid.py --runtime`. |
 | `controller.runOnStart` | `false` | If `true`, the controller runs `controller.test` once on start (and again on every pod restart/upgrade) instead of idling for a manual `kubectl exec`. |
 | `controller.extraTestFiles` | `{}` | Map of `filename: content` for custom `.test` files mounted under `tests/` in the controller pod -- e.g. for `replicaCount > 2`, which the shipped tests don't cover. |
 | `controller.resources` | 200m/256Mi req, 500m/512Mi lim | Controller pod resources (pure control-plane, no DPDK/hugepages). |
+| `pushgateway.enabled` | `true` | Deploy a companion Prometheus Pushgateway that the controller's default test pushes `FlowSizeTest` results to (`rapid/format.yaml`, "Format: PushGateway"). Its `Service` is deliberately named exactly `pushgateway` (not release-prefixed) because that hostname is hardcoded in `format.yaml` -- only one release per namespace can usefully enable this. Disable if you already run one under that name, or don't need pushed results. |
+| `pushgateway.image.repository` / `tag` / `pullPolicy` | `prom/pushgateway` / `v1.11.3` / `IfNotPresent` | [Pushgateway](https://github.com/prometheus/pushgateway) image. |
+| `pushgateway.resources` | 50m/32Mi req, 200m/128Mi lim | Pushgateway pod resources. |
 
 ## Ports
 

@@ -7,7 +7,7 @@ description: >-
   passthrough) so a rapidPROX peak-throughput test can run between them.
 type: application
 version: 0.1.0
-appVersion: "latest"
+appVersion: "0.1.0"
 home: https://github.com/rapidPROX/rapidPROX
 sources:
   - https://github.com/rapidPROX/rapidPROX
