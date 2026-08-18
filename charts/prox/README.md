@@ -98,6 +98,8 @@ helm install prox ./charts/prox -n prox --create-namespace
 | `pushgateway.serviceMonitor.enabled` | `false` | Deploy a `ServiceMonitor` (Prometheus Operator CRD) so an already-running Prometheus (e.g. kube-prometheus-stack, Rancher's rancher-monitoring) scrapes this Pushgateway automatically -- results then show up in Grafana without manual port-forwarding. Requires the CRD to already exist on the cluster; leave `false` if it doesn't. |
 | `pushgateway.serviceMonitor.interval` | `30s` | Scrape interval. |
 | `pushgateway.serviceMonitor.labels` | `{}` | Extra labels merged onto the `ServiceMonitor`, for Prometheus instances that only discover ServiceMonitors matching specific labels (check the Prometheus CR's `spec.serviceMonitorSelector`). |
+| `pushgateway.grafanaDashboard.enabled` | `false` | Deploy a `ConfigMap` (`dashboards/rapid-results.json`) that the kube-prometheus-stack / Rancher "grafana-sc-dashboard" sidecar auto-imports into Grafana -- throughput, latency and loss ratio from the last test run, plus a step-chart history across runs. Needs `serviceMonitor.enabled` (or an equivalent scrape config with `honorLabels`) for the `job="rapid"` data it queries to actually reach Prometheus. |
+| `pushgateway.grafanaDashboard.label` / `labelValue` | `grafana_dashboard` / `"1"` | Label the sidecar watches for. Override if your Grafana sidecar is configured differently (check its `LABEL`/`LABEL_VALUE` env vars). |
 
 ## Ports
 

@@ -182,3 +182,16 @@ pushgateway:
     # labels (e.g. release: rancher-monitoring) instead of all of them --
     # check your Prometheus CR's spec.serviceMonitorSelector.
     labels: {}
+
+  grafanaDashboard:
+    # Deploys a ConfigMap (charts/prox/dashboards/rapid-results.json) that
+    # the kube-prometheus-stack / Rancher "grafana-sc-dashboard" sidecar
+    # auto-imports into Grafana -- no manual dashboard import needed. Off
+    # by default since that sidecar isn't guaranteed to be running; it's
+    # harmless to enable otherwise (an inert ConfigMap). Needs
+    # serviceMonitor.enabled (or an equivalent scrape config with
+    # honorLabels) for the job="rapid" data the dashboard queries to
+    # actually reach Prometheus.
+    enabled: false
+    label: grafana_dashboard
+    labelValue: "1"
