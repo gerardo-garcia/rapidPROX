@@ -1,0 +1,174 @@
+{
+  "uid": "rapidprox-sweep",
+  "title": "rapidPROX Sweep",
+  "description": "Throughput/latency/loss vs packet size, one row per flow count. Needs a battery of results pushed with distinct (flows, size) grouping keys -- e.g. rapid/tests/sweep_pktsize_flows.test -- since Pushgateway only keeps the most recent push per grouping key (see RapidTest.post_data in rapid_test.py).",
+  "tags": ["rapidprox"],
+  "timezone": "",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "refresh": 1
+      },
+      {
+        "name": "flows",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(Total{job=\"rapid\"}, flows)",
+        "refresh": 2,
+        "sort": 3,
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Flows: ${flows}",
+      "repeat": "flows",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "barchart",
+      "title": "Throughput (Mpps) vs packet size",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 9, "w": 6, "x": 0, "y": 1 },
+      "targets": [
+        { "expr": "RevByCore{job=\"rapid\", flows=\"$flows\"}", "format": "table", "instant": true, "refId": "A" }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": { "Value": "Mpps" }
+          }
+        },
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 3 } },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "showValue": "always",
+        "legend": { "displayMode": "hidden", "showLegend": false, "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "id": 3,
+      "type": "barchart",
+      "title": "Throughput (Gbps) vs packet size",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 9, "w": 6, "x": 6, "y": 1 },
+      "targets": [
+        { "expr": "Total{job=\"rapid\", flows=\"$flows\"} / 1000", "format": "table", "instant": true, "refId": "A" }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": { "Value": "Gbps" }
+          }
+        },
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 3 } },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "showValue": "always",
+        "legend": { "displayMode": "hidden", "showLegend": false, "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "id": 4,
+      "type": "barchart",
+      "title": "Latency (µs) vs packet size",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 9, "w": 6, "x": 12, "y": 1 },
+      "targets": [
+        { "expr": "PCTLatency{job=\"rapid\", flows=\"$flows\"}", "format": "table", "instant": true, "refId": "A" }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": { "Value": "Latency" }
+          }
+        },
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 1 } },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "showValue": "always",
+        "legend": { "displayMode": "hidden", "showLegend": false, "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "id": 5,
+      "type": "barchart",
+      "title": "Loss Ratio (%) vs packet size",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 9, "w": 6, "x": 18, "y": 1 },
+      "targets": [
+        { "expr": "(Lost{job=\"rapid\", flows=\"$flows\"} / Sent{job=\"rapid\", flows=\"$flows\"}) * 100", "format": "table", "instant": true, "refId": "A" }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": { "Value": "Loss %" }
+          }
+        },
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 3,
+          "custom": { "thresholdsStyle": { "mode": "off" } }
+        }
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "showValue": "always",
+        "legend": { "displayMode": "hidden", "showLegend": false, "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      }
+    }
+  ]
+}

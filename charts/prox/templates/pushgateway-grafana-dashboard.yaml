@@ -21,4 +21,6 @@ metadata:
 data:
   rapid-results.json: |
 {{ .Files.Get "dashboards/rapid-results.json" | indent 4 }}
+  rapid-sweep.json: |
+{{ .Files.Get "dashboards/rapid-sweep.json" | indent 4 }}
 {{- end }}

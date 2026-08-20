@@ -23,6 +23,7 @@ import requests
 import time
 import os
 import copy
+import urllib.parse
 from past.utils import old_div
 from rapid_log import RapidLog
 from rapid_log import bcolors
@@ -131,7 +132,25 @@ class RapidTest(object):
             HEADERS = {'X-Requested-With': 'Python requests', 'Content-type': 'application/rapid'}
             if var['Format'] == 'PushGateway':
                 data = "\n".join("{} {}".format(k, v) for k, v in var[test_type].items()) + "\n"
-                response = requests.post(url=self.URL, data=data,headers=HEADERS)
+                # Pushgateway overwrites any earlier push sharing the same
+                # grouping key (the URL path after /metrics/). self.URL is
+                # a single fixed job/rapid/ URL, so without this, sweeping
+                # multiple flow counts/packet sizes in one test run would
+                # leave only the very last combination visible in
+                # Prometheus. Folding Flows/Size into the grouping key (when
+                # this result has them, e.g. FlowSizeTest/ImpairTest) gives
+                # each combination its own persistent series instead --
+                # Pushgateway exposes the grouping-key label/value pairs as
+                # regular metric labels too, so `flows`/`size` become
+                # queryable labels in Grafana/Prometheus.
+                url = self.URL
+                for label in ('Flows', 'Size'):
+                    if label in variables:
+                        url = url.rstrip('/') + '/{}/{}'.format(
+                            label.lower(), urllib.parse.quote(str(variables[label]), safe=''))
+                if not url.endswith('/'):
+                    url += '/'
+                response = requests.post(url=url, data=data, headers=HEADERS)
             elif var['Format'] == 'Xtesting':
                 data = var[test_type]
                 response = requests.post(url=self.URL, json=data)
