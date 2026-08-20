@@ -130,6 +130,7 @@ class RapidTest(object):
         self.parse_data_format_dict(var, variables)
         if var.keys() >= {'URL', test_type, 'Format'}:
             HEADERS = {'X-Requested-With': 'Python requests', 'Content-type': 'application/rapid'}
+            url = self.URL
             if var['Format'] == 'PushGateway':
                 data = "\n".join("{} {}".format(k, v) for k, v in var[test_type].items()) + "\n"
                 # Pushgateway overwrites any earlier push sharing the same
@@ -143,19 +144,25 @@ class RapidTest(object):
                 # Pushgateway exposes the grouping-key label/value pairs as
                 # regular metric labels too, so `flows`/`size` become
                 # queryable labels in Grafana/Prometheus.
-                url = self.URL
+                url = url.rstrip('/')
+                has_grouping_labels = False
                 for label in ('Flows', 'Size'):
                     if label in variables:
-                        url = url.rstrip('/') + '/{}/{}'.format(
+                        url += '/{}/{}'.format(
                             label.lower(), urllib.parse.quote(str(variables[label]), safe=''))
-                if not url.endswith('/'):
+                        has_grouping_labels = True
+                # Pushgateway rejects a trailing slash once label/value
+                # pairs follow the job name ("odd number of components in
+                # label string"); with none, it expects one (matches the
+                # plain job/rapid/ URL this always used before).
+                if not has_grouping_labels:
                     url += '/'
                 response = requests.post(url=url, data=data, headers=HEADERS)
             elif var['Format'] == 'Xtesting':
                 data = var[test_type]
                 response = requests.post(url=self.URL, json=data)
             if (response.status_code >= 300):
-                RapidLog.info('Cannot send metrics to {}'.format(self.URL))
+                RapidLog.info('Cannot send metrics to {}'.format(url))
                 RapidLog.info(data)
         return (var[test_type])
 
