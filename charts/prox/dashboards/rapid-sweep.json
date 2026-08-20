@@ -5,7 +5,7 @@
   "tags": ["rapidprox"],
   "timezone": "",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": true,
   "graphTooltip": 1,
   "refresh": "30s",
@@ -54,12 +54,13 @@
         { "expr": "RevByCore{job=\"rapid\", flows=\"$flows\"}", "format": "table", "instant": true, "refId": "A" }
       ],
       "transformations": [
+        { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
             "indexByName": {},
-            "renameByName": { "Value": "Mpps" }
+            "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
@@ -84,12 +85,13 @@
         { "expr": "Total{job=\"rapid\", flows=\"$flows\"} / 1000", "format": "table", "instant": true, "refId": "A" }
       ],
       "transformations": [
+        { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
             "indexByName": {},
-            "renameByName": { "Value": "Gbps" }
+            "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
@@ -114,12 +116,13 @@
         { "expr": "PCTLatency{job=\"rapid\", flows=\"$flows\"}", "format": "table", "instant": true, "refId": "A" }
       ],
       "transformations": [
+        { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
             "indexByName": {},
-            "renameByName": { "Value": "Latency" }
+            "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
@@ -144,12 +147,13 @@
         { "expr": "(Lost{job=\"rapid\", flows=\"$flows\"} / Sent{job=\"rapid\", flows=\"$flows\"}) * 100", "format": "table", "instant": true, "refId": "A" }
       ],
       "transformations": [
+        { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
             "indexByName": {},
-            "renameByName": { "Value": "Loss %" }
+            "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
