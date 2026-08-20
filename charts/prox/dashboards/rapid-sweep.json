@@ -1,11 +1,11 @@
 {
   "uid": "rapidprox-sweep",
   "title": "rapidPROX Sweep",
-  "description": "Throughput/latency/loss vs packet size, one row per flow count. Needs a battery of results pushed with distinct (flows, size) grouping keys -- e.g. rapid/tests/sweep_pktsize_flows.test -- since Pushgateway only keeps the most recent push per grouping key (see RapidTest.post_data in rapid_test.py).",
+  "description": "Throughput/latency/loss vs packet size from a rapidPROX sweep (e.g. rapid/tests/sweep_pktsize_flows.test) -- one X-Y chart per metric, one line per flow count. Only uses results that carry both flows and size labels (i.e. pushed via a FlowSizeTest/ImpairTest sweep, not other test types).",
   "tags": ["rapidprox"],
   "timezone": "",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 1,
   "editable": true,
   "graphTooltip": 1,
   "refresh": "30s",
@@ -19,159 +19,148 @@
         "current": {},
         "hide": 0,
         "refresh": 1
-      },
-      {
-        "name": "flows",
-        "type": "query",
-        "datasource": { "type": "prometheus", "uid": "${datasource}" },
-        "query": "label_values(Total{job=\"rapid\"}, flows)",
-        "refresh": 2,
-        "sort": 3,
-        "multi": true,
-        "includeAll": true,
-        "current": { "text": "All", "value": "$__all" },
-        "hide": 0
       }
     ]
   },
   "panels": [
     {
       "id": 1,
-      "type": "row",
-      "title": "Flows: ${flows}",
-      "repeat": "flows",
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
-      "collapsed": false,
-      "panels": []
-    },
-    {
-      "id": 2,
-      "type": "barchart",
+      "type": "xychart",
       "title": "Throughput (Mpps) vs packet size",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "h": 9, "w": 6, "x": 0, "y": 1 },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 0 },
       "targets": [
-        { "expr": "RevByCore{job=\"rapid\", flows=\"$flows\"}", "format": "table", "instant": true, "refId": "A" }
+        { "expr": "RevByCore{job=\"rapid\", flows=~\".+\"}", "instant": true, "refId": "A" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
             "indexByName": {},
             "renameByName": {}
           }
         },
-        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
-        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false, "naming": { "asLabels": true } } }
       ],
-      "fieldConfig": { "defaults": { "unit": "none", "decimals": 3 } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto" }
+        }
+      },
       "options": {
-        "orientation": "auto",
-        "xTickLabelRotation": 0,
-        "showValue": "always",
-        "legend": { "displayMode": "hidden", "showLegend": false, "placement": "bottom" },
-        "tooltip": { "mode": "single" }
+        "seriesMapping": "auto",
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      }
+    },
+    {
+      "id": 2,
+      "type": "xychart",
+      "title": "Throughput (Gbps) vs packet size",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "Total{job=\"rapid\", flows=~\".+\"} / 1000", "instant": true, "refId": "A" }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        },
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false, "naming": { "asLabels": true } } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto" }
+        }
+      },
+      "options": {
+        "seriesMapping": "auto",
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
     },
     {
       "id": 3,
-      "type": "barchart",
-      "title": "Throughput (Gbps) vs packet size",
+      "type": "xychart",
+      "title": "Latency (µs) vs packet size",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "h": 9, "w": 6, "x": 6, "y": 1 },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 10 },
       "targets": [
-        { "expr": "Total{job=\"rapid\", flows=\"$flows\"} / 1000", "format": "table", "instant": true, "refId": "A" }
+        { "expr": "PCTLatency{job=\"rapid\", flows=~\".+\"}", "instant": true, "refId": "A" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
             "indexByName": {},
             "renameByName": {}
           }
         },
-        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
-        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false, "naming": { "asLabels": true } } }
       ],
-      "fieldConfig": { "defaults": { "unit": "none", "decimals": 3 } },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto" }
+        }
+      },
       "options": {
-        "orientation": "auto",
-        "xTickLabelRotation": 0,
-        "showValue": "always",
-        "legend": { "displayMode": "hidden", "showLegend": false, "placement": "bottom" },
-        "tooltip": { "mode": "single" }
+        "seriesMapping": "auto",
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
     },
     {
       "id": 4,
-      "type": "barchart",
-      "title": "Latency (µs) vs packet size",
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "h": 9, "w": 6, "x": 12, "y": 1 },
-      "targets": [
-        { "expr": "PCTLatency{job=\"rapid\", flows=\"$flows\"}", "format": "table", "instant": true, "refId": "A" }
-      ],
-      "transformations": [
-        { "id": "labelsToFields", "options": {} },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
-            "indexByName": {},
-            "renameByName": {}
-          }
-        },
-        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
-        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
-      ],
-      "fieldConfig": { "defaults": { "unit": "none", "decimals": 1 } },
-      "options": {
-        "orientation": "auto",
-        "xTickLabelRotation": 0,
-        "showValue": "always",
-        "legend": { "displayMode": "hidden", "showLegend": false, "placement": "bottom" },
-        "tooltip": { "mode": "single" }
-      }
-    },
-    {
-      "id": 5,
-      "type": "barchart",
+      "type": "xychart",
       "title": "Loss Ratio (%) vs packet size",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "h": 9, "w": 6, "x": 18, "y": 1 },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 10 },
       "targets": [
-        { "expr": "(Lost{job=\"rapid\", flows=\"$flows\"} / Sent{job=\"rapid\", flows=\"$flows\"}) * 100", "format": "table", "instant": true, "refId": "A" }
+        { "expr": "(Lost{job=\"rapid\", flows=~\".+\"} / Sent{job=\"rapid\", flows=~\".+\"}) * 100", "instant": true, "refId": "A" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
             "indexByName": {},
             "renameByName": {}
           }
         },
-        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
-        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false, "naming": { "asLabels": true } } }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "decimals": 3,
-          "custom": { "thresholdsStyle": { "mode": "off" } }
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto" }
         }
       },
       "options": {
-        "orientation": "auto",
-        "xTickLabelRotation": 0,
-        "showValue": "always",
-        "legend": { "displayMode": "hidden", "showLegend": false, "placement": "bottom" },
-        "tooltip": { "mode": "single" }
+        "seriesMapping": "auto",
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
     }
   ]
