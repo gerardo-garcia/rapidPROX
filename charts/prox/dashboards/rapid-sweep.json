@@ -1,7 +1,7 @@
 {
   "uid": "rapidprox-sweep",
   "title": "rapidPROX Sweep",
-  "description": "Throughput/latency/loss vs packet size from a rapidPROX sweep (e.g. rapid/tests/sweep_pktsize_flows.test) -- one X-Y chart per metric, one line per flow count. Only uses results that carry both flows and size labels (i.e. pushed via a FlowSizeTest/ImpairTest sweep, not other test types).",
+  "description": "Throughput/latency/loss vs packet size from a rapidPROX sweep (e.g. rapid/tests/sweep_pktsize_flows.test) -- one X-Y chart per metric, one line per flow count. Only uses results that carry both flows and size labels (i.e. pushed via a FlowSizeTest/ImpairTest sweep, not other test types). Latency has three panels -- Avg/Percentile/Max -- since a single number doesn't say which one it is; the Percentile panel reflects whatever lat_percentile the test file configured (99th by default), not a fixed value.",
   "tags": ["rapidprox"],
   "timezone": "",
   "schemaVersion": 39,
@@ -132,15 +132,16 @@
       }
     },
     {
-      "id": 3,
+      "id": 5,
       "type": "xychart",
-      "title": "Latency (µs) vs packet size",
+      "title": "Latency (Avg, µs) vs packet size",
+      "description": "AvgLatency -- mean latency across the test iteration.",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 10, "w": 12, "x": 0, "y": 10 },
       "targets": [
-        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"64\"}, \"__name__\", \"Latency_64\", \"\", \"\")", "instant": true, "refId": "A" },
-        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"8192\"}, \"__name__\", \"Latency_8192\", \"\", \"\")", "instant": true, "refId": "B" },
-        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"524288\"}, \"__name__\", \"Latency_524288\", \"\", \"\")", "instant": true, "refId": "C" }
+        { "expr": "label_replace(AvgLatency{job=\"rapid\", flows=\"64\"}, \"__name__\", \"AvgLatency_64\", \"\", \"\")", "instant": true, "refId": "A" },
+        { "expr": "label_replace(AvgLatency{job=\"rapid\", flows=\"8192\"}, \"__name__\", \"AvgLatency_8192\", \"\", \"\")", "instant": true, "refId": "B" },
+        { "expr": "label_replace(AvgLatency{job=\"rapid\", flows=\"524288\"}, \"__name__\", \"AvgLatency_524288\", \"\", \"\")", "instant": true, "refId": "C" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": { "valueLabel": "__name__" } },
@@ -157,7 +158,7 @@
           "id": "organize",
           "options": {
             "excludeByName": {},
-            "indexByName": { "size": 0, "Latency_64": 1, "Latency_8192": 2, "Latency_524288": 3 },
+            "indexByName": { "size": 0, "AvgLatency_64": 1, "AvgLatency_8192": 2, "AvgLatency_524288": 3 },
             "renameByName": {}
           }
         },
@@ -177,9 +178,119 @@
       "options": {
         "mapping": "manual",
         "series": [
-          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Latency_64" } }, "name": { "fixed": "64-flows" } },
-          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Latency_8192" } }, "name": { "fixed": "8192-flows" } },
-          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Latency_524288" } }, "name": { "fixed": "524288-flows" } }
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "AvgLatency_64" } }, "name": { "fixed": "64-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "AvgLatency_8192" } }, "name": { "fixed": "8192-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "AvgLatency_524288" } }, "name": { "fixed": "524288-flows" } }
+        ],
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      }
+    },
+    {
+      "id": 3,
+      "type": "xychart",
+      "title": "Latency (Percentile, µs) vs packet size",
+      "description": "PCTLatency -- the percentile configured via lat_percentile in the .test file (99th by default).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 10 },
+      "targets": [
+        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"64\"}, \"__name__\", \"PctLatency_64\", \"\", \"\")", "instant": true, "refId": "A" },
+        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"8192\"}, \"__name__\", \"PctLatency_8192\", \"\", \"\")", "instant": true, "refId": "B" },
+        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"524288\"}, \"__name__\", \"PctLatency_524288\", \"\", \"\")", "instant": true, "refId": "C" }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "__name__" } },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": { "size": 0, "PctLatency_64": 1, "PctLatency_8192": 2, "PctLatency_524288": 3 },
+            "renameByName": {}
+          }
+        },
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto", "axisLabel": "Latency (µs)" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
+        ]
+      },
+      "pluginVersion": "11.5.5",
+      "options": {
+        "mapping": "manual",
+        "series": [
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "PctLatency_64" } }, "name": { "fixed": "64-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "PctLatency_8192" } }, "name": { "fixed": "8192-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "PctLatency_524288" } }, "name": { "fixed": "524288-flows" } }
+        ],
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      }
+    },
+    {
+      "id": 6,
+      "type": "xychart",
+      "title": "Latency (Max, µs) vs packet size",
+      "description": "MaxLatency -- peak latency observed during the test iteration.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        { "expr": "label_replace(MaxLatency{job=\"rapid\", flows=\"64\"}, \"__name__\", \"MaxLatency_64\", \"\", \"\")", "instant": true, "refId": "A" },
+        { "expr": "label_replace(MaxLatency{job=\"rapid\", flows=\"8192\"}, \"__name__\", \"MaxLatency_8192\", \"\", \"\")", "instant": true, "refId": "B" },
+        { "expr": "label_replace(MaxLatency{job=\"rapid\", flows=\"524288\"}, \"__name__\", \"MaxLatency_524288\", \"\", \"\")", "instant": true, "refId": "C" }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "__name__" } },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": { "size": 0, "MaxLatency_64": 1, "MaxLatency_8192": 2, "MaxLatency_524288": 3 },
+            "renameByName": {}
+          }
+        },
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto", "axisLabel": "Latency (µs)" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
+        ]
+      },
+      "pluginVersion": "11.5.5",
+      "options": {
+        "mapping": "manual",
+        "series": [
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "MaxLatency_64" } }, "name": { "fixed": "64-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "MaxLatency_8192" } }, "name": { "fixed": "8192-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "MaxLatency_524288" } }, "name": { "fixed": "524288-flows" } }
         ],
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
@@ -190,7 +301,7 @@
       "type": "xychart",
       "title": "Loss Ratio (%) vs packet size",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 10 },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 20 },
       "targets": [
         { "expr": "label_replace((Lost{job=\"rapid\", flows=\"64\"} / Sent{job=\"rapid\", flows=\"64\"}) * 100, \"__name__\", \"LossPercent_64\", \"\", \"\")", "instant": true, "refId": "A" },
         { "expr": "label_replace((Lost{job=\"rapid\", flows=\"8192\"} / Sent{job=\"rapid\", flows=\"8192\"}) * 100, \"__name__\", \"LossPercent_8192\", \"\", \"\")", "instant": true, "refId": "B" },
