@@ -38,13 +38,13 @@
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
-            "indexByName": {},
+            "indexByName": { "size": 0, "Mpps": 1 },
             "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
         { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": true } }
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false } }
       ],
       "fieldConfig": {
         "defaults": {
@@ -53,13 +53,7 @@
         }
       },
       "options": {
-        "seriesMapping": "manual",
-        "series": [
-          {
-            "x": { "matcher": { "id": "byName", "options": "size" } },
-            "y": { "matcher": { "id": "byName", "options": "Mpps" } }
-          }
-        ],
+        "seriesMapping": "auto",
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
@@ -79,13 +73,13 @@
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
-            "indexByName": {},
+            "indexByName": { "size": 0, "Gbps": 1 },
             "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
         { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": true } }
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false } }
       ],
       "fieldConfig": {
         "defaults": {
@@ -94,13 +88,7 @@
         }
       },
       "options": {
-        "seriesMapping": "manual",
-        "series": [
-          {
-            "x": { "matcher": { "id": "byName", "options": "size" } },
-            "y": { "matcher": { "id": "byName", "options": "Gbps" } }
-          }
-        ],
+        "seriesMapping": "auto",
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
@@ -120,13 +108,13 @@
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
-            "indexByName": {},
+            "indexByName": { "size": 0, "Latency": 1 },
             "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
         { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": true } }
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false } }
       ],
       "fieldConfig": {
         "defaults": {
@@ -135,13 +123,7 @@
         }
       },
       "options": {
-        "seriesMapping": "manual",
-        "series": [
-          {
-            "x": { "matcher": { "id": "byName", "options": "size" } },
-            "y": { "matcher": { "id": "byName", "options": "Latency" } }
-          }
-        ],
+        "seriesMapping": "auto",
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
@@ -161,13 +143,13 @@
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
-            "indexByName": {},
+            "indexByName": { "size": 0, "LossPercent": 1 },
             "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
         { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": true } }
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false } }
       ],
       "fieldConfig": {
         "defaults": {
@@ -176,13 +158,7 @@
         }
       },
       "options": {
-        "seriesMapping": "manual",
-        "series": [
-          {
-            "x": { "matcher": { "id": "byName", "options": "size" } },
-            "y": { "matcher": { "id": "byName", "options": "LossPercent" } }
-          }
-        ],
+        "seriesMapping": "auto",
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
