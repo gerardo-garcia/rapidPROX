@@ -1,7 +1,7 @@
 {
   "uid": "rapidprox-results",
   "title": "rapidPROX Results",
-  "description": "Latest peak-throughput test result pushed by the rapid controller to the chart's bundled Pushgateway (rapid/format.yaml, job=\"rapid\"). One value per metric -- Pushgateway holds only the most recent push, so each panel's history is a step chart of successive test runs, not a continuous measurement.",
+  "description": "Latest peak-throughput test result pushed by the rapid controller to the chart's bundled Pushgateway (rapid/format.yaml, job=\"rapid\"). One value per metric -- Pushgateway holds only the most recent push, so each panel's history is a step chart of successive test runs, not a continuous measurement. A rapid-sweep test run pushes one flows/size combination per grouping key, so every combination stays queryable at once; every query here is filtered down to the single flows/size combination with the highest (size, flows) score, which is always the last iteration of a sweep (rapid_flowsizetest.py iterates packet sizes outer, flow counts inner, both ascending) and the only combination of a single (non-sweep) test.",
   "tags": ["rapidprox"],
   "timezone": "",
   "schemaVersion": 39,
@@ -52,7 +52,7 @@
         "textMode": "auto"
       },
       "targets": [
-        { "expr": "Total{job=\"rapid\"}", "legendFormat": "Total", "refId": "A" }
+        { "expr": "Total{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Total", "refId": "A" }
       ]
     },
     {
@@ -76,7 +76,7 @@
         "textMode": "auto"
       },
       "targets": [
-        { "expr": "PCTLatency{job=\"rapid\"}", "legendFormat": "Latency", "refId": "A" }
+        { "expr": "PCTLatency{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Latency", "refId": "A" }
       ]
     },
     {
@@ -100,7 +100,7 @@
         "textMode": "auto"
       },
       "targets": [
-        { "expr": "Lost{job=\"rapid\"}", "legendFormat": "Lost", "refId": "A" }
+        { "expr": "Lost{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Lost", "refId": "A" }
       ]
     },
     {
@@ -124,7 +124,7 @@
         "textMode": "auto"
       },
       "targets": [
-        { "expr": "(Lost{job=\"rapid\"} / Sent{job=\"rapid\"}) * 100", "legendFormat": "Loss ratio", "refId": "A" }
+        { "expr": "(Lost{job=\"rapid\"} / Sent{job=\"rapid\"}) * 100 and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Loss ratio", "refId": "A" }
       ]
     },
     {
@@ -150,8 +150,8 @@
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
-        { "expr": "Total{job=\"rapid\"}", "legendFormat": "Total (offered)", "refId": "A" },
-        { "expr": "RevByCore{job=\"rapid\"}", "legendFormat": "RevByCore (received)", "refId": "B" }
+        { "expr": "Total{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Total (offered)", "refId": "A" },
+        { "expr": "RevByCore{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "RevByCore (received)", "refId": "B" }
       ]
     },
     {
@@ -169,7 +169,7 @@
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
-        { "expr": "PCTLatency{job=\"rapid\"}", "legendFormat": "Latency", "refId": "A" }
+        { "expr": "PCTLatency{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Latency", "refId": "A" }
       ]
     },
     {
@@ -188,7 +188,7 @@
       "gridPos": { "h": 5, "w": 6, "x": 0, "y": 18 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none", "colorMode": "none", "textMode": "auto" },
-      "targets": [{ "expr": "Flows{job=\"rapid\"}", "legendFormat": "Flows", "refId": "A" }]
+      "targets": [{ "expr": "Flows{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Flows", "refId": "A" }]
     },
     {
       "id": 11,
@@ -198,7 +198,7 @@
       "gridPos": { "h": 5, "w": 6, "x": 6, "y": 18 },
       "fieldConfig": { "defaults": { "unit": "none", "decimals": 1 } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none", "colorMode": "none", "textMode": "auto" },
-      "targets": [{ "expr": "Size{job=\"rapid\"}", "legendFormat": "Size", "refId": "A" }]
+      "targets": [{ "expr": "Size{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Size", "refId": "A" }]
     },
     {
       "id": 12,
@@ -208,7 +208,7 @@
       "gridPos": { "h": 5, "w": 6, "x": 12, "y": 18 },
       "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none", "colorMode": "none", "textMode": "auto" },
-      "targets": [{ "expr": "Sent{job=\"rapid\"}", "legendFormat": "Sent", "refId": "A" }]
+      "targets": [{ "expr": "Sent{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Sent", "refId": "A" }]
     },
     {
       "id": 13,
@@ -220,9 +220,9 @@
       "fieldConfig": { "defaults": { "unit": "watt", "decimals": 1 } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none", "colorMode": "none", "textMode": "auto", "orientation": "vertical" },
       "targets": [
-        { "expr": "CPUPower{job=\"rapid\"}", "legendFormat": "CPU", "refId": "A" },
-        { "expr": "RAMPower{job=\"rapid\"}", "legendFormat": "RAM", "refId": "B" },
-        { "expr": "SystemPower{job=\"rapid\"}", "legendFormat": "System", "refId": "C" }
+        { "expr": "CPUPower{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "CPU", "refId": "A" },
+        { "expr": "RAMPower{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "RAM", "refId": "B" },
+        { "expr": "SystemPower{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "System", "refId": "C" }
       ]
     }
   ]
