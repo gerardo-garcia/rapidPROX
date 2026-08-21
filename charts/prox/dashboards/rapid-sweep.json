@@ -30,27 +30,31 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 10, "w": 12, "x": 0, "y": 0 },
       "targets": [
-        { "expr": "label_replace(RevByCore{job=\"rapid\", flows=~\".+\"}, \"__name__\", \"Mpps\", \"\", \"\")", "instant": true, "refId": "A" }
+        { "expr": "label_replace(RevByCore{job=\"rapid\", flows=\"64\"}, \"__name__\", \"Mpps_64\", \"\", \"\")", "instant": true, "refId": "A" },
+        { "expr": "label_replace(RevByCore{job=\"rapid\", flows=\"8192\"}, \"__name__\", \"Mpps_8192\", \"\", \"\")", "instant": true, "refId": "B" },
+        { "expr": "label_replace(RevByCore{job=\"rapid\", flows=\"524288\"}, \"__name__\", \"Mpps_524288\", \"\", \"\")", "instant": true, "refId": "C" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
-            "indexByName": { "size": 0, "Mpps": 1 },
-            "renameByName": {}
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": { "size": 0, "Mpps_64": 1, "Mpps_8192": 2, "Mpps_524288": 3 },
+            "renameByName": { "Mpps_64": "64 flows", "Mpps_8192": "8192 flows", "Mpps_524288": "524288 flows" }
           }
         },
-        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
-        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false } }
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto" }
-        }
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto", "axisLabel": "Mpps" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
+        ]
       },
       "options": {
         "seriesMapping": "auto",
@@ -65,27 +69,31 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
       "targets": [
-        { "expr": "label_replace(Total{job=\"rapid\", flows=~\".+\"} / 1000, \"__name__\", \"Gbps\", \"\", \"\")", "instant": true, "refId": "A" }
+        { "expr": "label_replace(Total{job=\"rapid\", flows=\"64\"} / 1000, \"__name__\", \"Gbps_64\", \"\", \"\")", "instant": true, "refId": "A" },
+        { "expr": "label_replace(Total{job=\"rapid\", flows=\"8192\"} / 1000, \"__name__\", \"Gbps_8192\", \"\", \"\")", "instant": true, "refId": "B" },
+        { "expr": "label_replace(Total{job=\"rapid\", flows=\"524288\"} / 1000, \"__name__\", \"Gbps_524288\", \"\", \"\")", "instant": true, "refId": "C" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
-            "indexByName": { "size": 0, "Gbps": 1 },
-            "renameByName": {}
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": { "size": 0, "Gbps_64": 1, "Gbps_8192": 2, "Gbps_524288": 3 },
+            "renameByName": { "Gbps_64": "64 flows", "Gbps_8192": "8192 flows", "Gbps_524288": "524288 flows" }
           }
         },
-        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
-        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false } }
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto" }
-        }
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto", "axisLabel": "Gbps" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
+        ]
       },
       "options": {
         "seriesMapping": "auto",
@@ -100,27 +108,31 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 10, "w": 12, "x": 0, "y": 10 },
       "targets": [
-        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=~\".+\"}, \"__name__\", \"Latency\", \"\", \"\")", "instant": true, "refId": "A" }
+        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"64\"}, \"__name__\", \"Latency_64\", \"\", \"\")", "instant": true, "refId": "A" },
+        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"8192\"}, \"__name__\", \"Latency_8192\", \"\", \"\")", "instant": true, "refId": "B" },
+        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"524288\"}, \"__name__\", \"Latency_524288\", \"\", \"\")", "instant": true, "refId": "C" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
-            "indexByName": { "size": 0, "Latency": 1 },
-            "renameByName": {}
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": { "size": 0, "Latency_64": 1, "Latency_8192": 2, "Latency_524288": 3 },
+            "renameByName": { "Latency_64": "64 flows", "Latency_8192": "8192 flows", "Latency_524288": "524288 flows" }
           }
         },
-        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
-        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false } }
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto" }
-        }
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto", "axisLabel": "Latency (µs)" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
+        ]
       },
       "options": {
         "seriesMapping": "auto",
@@ -135,27 +147,31 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 10, "w": 12, "x": 12, "y": 10 },
       "targets": [
-        { "expr": "label_replace((Lost{job=\"rapid\", flows=~\".+\"} / Sent{job=\"rapid\", flows=~\".+\"}) * 100, \"__name__\", \"LossPercent\", \"\", \"\")", "instant": true, "refId": "A" }
+        { "expr": "label_replace((Lost{job=\"rapid\", flows=\"64\"} / Sent{job=\"rapid\", flows=\"64\"}) * 100, \"__name__\", \"LossPercent_64\", \"\", \"\")", "instant": true, "refId": "A" },
+        { "expr": "label_replace((Lost{job=\"rapid\", flows=\"8192\"} / Sent{job=\"rapid\", flows=\"8192\"}) * 100, \"__name__\", \"LossPercent_8192\", \"\", \"\")", "instant": true, "refId": "B" },
+        { "expr": "label_replace((Lost{job=\"rapid\", flows=\"524288\"} / Sent{job=\"rapid\", flows=\"524288\"}) * 100, \"__name__\", \"LossPercent_524288\", \"\", \"\")", "instant": true, "refId": "C" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
         {
           "id": "organize",
           "options": {
-            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
-            "indexByName": { "size": 0, "LossPercent": 1 },
-            "renameByName": {}
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": { "size": 0, "LossPercent_64": 1, "LossPercent_8192": 2, "LossPercent_524288": 3 },
+            "renameByName": { "LossPercent_64": "64 flows", "LossPercent_8192": "8192 flows", "LossPercent_524288": "524288 flows" }
           }
         },
-        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
-        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false } }
+        { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
+        { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "size" }] } }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto" }
-        }
+          "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto", "axisLabel": "Loss (%)" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
+        ]
       },
       "options": {
         "seriesMapping": "auto",
