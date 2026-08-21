@@ -30,7 +30,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 10, "w": 12, "x": 0, "y": 0 },
       "targets": [
-        { "expr": "RevByCore{job=\"rapid\", flows=~\".+\"}", "instant": true, "refId": "A" }
+        { "expr": "label_replace(RevByCore{job=\"rapid\", flows=~\".+\"}, \"__name__\", \"Mpps\", \"\", \"\")", "instant": true, "refId": "A" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
@@ -44,7 +44,7 @@
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
         { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false, "naming": { "asLabels": true } } }
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": true } }
       ],
       "fieldConfig": {
         "defaults": {
@@ -53,7 +53,13 @@
         }
       },
       "options": {
-        "seriesMapping": "auto",
+        "seriesMapping": "manual",
+        "series": [
+          {
+            "x": { "matcher": { "id": "byName", "options": "size" } },
+            "y": { "matcher": { "id": "byName", "options": "Mpps" } }
+          }
+        ],
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
@@ -65,7 +71,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
       "targets": [
-        { "expr": "Total{job=\"rapid\", flows=~\".+\"} / 1000", "instant": true, "refId": "A" }
+        { "expr": "label_replace(Total{job=\"rapid\", flows=~\".+\"} / 1000, \"__name__\", \"Gbps\", \"\", \"\")", "instant": true, "refId": "A" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
@@ -79,7 +85,7 @@
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
         { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false, "naming": { "asLabels": true } } }
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": true } }
       ],
       "fieldConfig": {
         "defaults": {
@@ -88,7 +94,13 @@
         }
       },
       "options": {
-        "seriesMapping": "auto",
+        "seriesMapping": "manual",
+        "series": [
+          {
+            "x": { "matcher": { "id": "byName", "options": "size" } },
+            "y": { "matcher": { "id": "byName", "options": "Gbps" } }
+          }
+        ],
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
@@ -100,7 +112,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 10, "w": 12, "x": 0, "y": 10 },
       "targets": [
-        { "expr": "PCTLatency{job=\"rapid\", flows=~\".+\"}", "instant": true, "refId": "A" }
+        { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=~\".+\"}, \"__name__\", \"Latency\", \"\", \"\")", "instant": true, "refId": "A" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
@@ -114,7 +126,7 @@
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
         { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false, "naming": { "asLabels": true } } }
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": true } }
       ],
       "fieldConfig": {
         "defaults": {
@@ -123,7 +135,13 @@
         }
       },
       "options": {
-        "seriesMapping": "auto",
+        "seriesMapping": "manual",
+        "series": [
+          {
+            "x": { "matcher": { "id": "byName", "options": "size" } },
+            "y": { "matcher": { "id": "byName", "options": "Latency" } }
+          }
+        ],
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
@@ -135,7 +153,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 10, "w": 12, "x": 12, "y": 10 },
       "targets": [
-        { "expr": "(Lost{job=\"rapid\", flows=~\".+\"} / Sent{job=\"rapid\", flows=~\".+\"}) * 100", "instant": true, "refId": "A" }
+        { "expr": "label_replace((Lost{job=\"rapid\", flows=~\".+\"} / Sent{job=\"rapid\", flows=~\".+\"}) * 100, \"__name__\", \"LossPercent\", \"\", \"\")", "instant": true, "refId": "A" }
       ],
       "transformations": [
         { "id": "labelsToFields", "options": {} },
@@ -149,7 +167,7 @@
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }, { "targetField": "flows", "destinationType": "number" }], "fields": {} } },
         { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "flows" }, { "field": "size" }] } },
-        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": false, "naming": { "asLabels": true } } }
+        { "id": "partitionByValues", "options": { "fields": ["flows"], "keepFields": true } }
       ],
       "fieldConfig": {
         "defaults": {
@@ -158,7 +176,13 @@
         }
       },
       "options": {
-        "seriesMapping": "auto",
+        "seriesMapping": "manual",
+        "series": [
+          {
+            "x": { "matcher": { "id": "byName", "options": "size" } },
+            "y": { "matcher": { "id": "byName", "options": "LossPercent" } }
+          }
+        ],
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
