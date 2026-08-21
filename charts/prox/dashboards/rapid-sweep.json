@@ -35,13 +35,22 @@
         { "expr": "label_replace(RevByCore{job=\"rapid\", flows=\"524288\"}, \"__name__\", \"Mpps_524288\", \"\", \"\")", "instant": true, "refId": "C" }
       ],
       "transformations": [
-        { "id": "labelsToFields", "options": {} },
+        { "id": "labelsToFields", "options": { "valueLabel": "__name__" } },
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
             "indexByName": { "size": 0, "Mpps_64": 1, "Mpps_8192": 2, "Mpps_524288": 3 },
-            "renameByName": { "Mpps_64": "64 flows", "Mpps_8192": "8192 flows", "Mpps_524288": "524288 flows" }
+            "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
@@ -56,8 +65,14 @@
           { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
         ]
       },
+      "pluginVersion": "11.5.5",
       "options": {
-        "seriesMapping": "auto",
+        "mapping": "manual",
+        "series": [
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Mpps_64" } }, "name": { "fixed": "64-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Mpps_8192" } }, "name": { "fixed": "8192-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Mpps_524288" } }, "name": { "fixed": "524288-flows" } }
+        ],
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
@@ -74,13 +89,22 @@
         { "expr": "label_replace(Total{job=\"rapid\", flows=\"524288\"} / 1000, \"__name__\", \"Gbps_524288\", \"\", \"\")", "instant": true, "refId": "C" }
       ],
       "transformations": [
-        { "id": "labelsToFields", "options": {} },
+        { "id": "labelsToFields", "options": { "valueLabel": "__name__" } },
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
             "indexByName": { "size": 0, "Gbps_64": 1, "Gbps_8192": 2, "Gbps_524288": 3 },
-            "renameByName": { "Gbps_64": "64 flows", "Gbps_8192": "8192 flows", "Gbps_524288": "524288 flows" }
+            "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
@@ -95,8 +119,14 @@
           { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
         ]
       },
+      "pluginVersion": "11.5.5",
       "options": {
-        "seriesMapping": "auto",
+        "mapping": "manual",
+        "series": [
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Gbps_64" } }, "name": { "fixed": "64-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Gbps_8192" } }, "name": { "fixed": "8192-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Gbps_524288" } }, "name": { "fixed": "524288-flows" } }
+        ],
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
@@ -113,13 +143,22 @@
         { "expr": "label_replace(PCTLatency{job=\"rapid\", flows=\"524288\"}, \"__name__\", \"Latency_524288\", \"\", \"\")", "instant": true, "refId": "C" }
       ],
       "transformations": [
-        { "id": "labelsToFields", "options": {} },
+        { "id": "labelsToFields", "options": { "valueLabel": "__name__" } },
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
             "indexByName": { "size": 0, "Latency_64": 1, "Latency_8192": 2, "Latency_524288": 3 },
-            "renameByName": { "Latency_64": "64 flows", "Latency_8192": "8192 flows", "Latency_524288": "524288 flows" }
+            "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
@@ -134,8 +173,14 @@
           { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
         ]
       },
+      "pluginVersion": "11.5.5",
       "options": {
-        "seriesMapping": "auto",
+        "mapping": "manual",
+        "series": [
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Latency_64" } }, "name": { "fixed": "64-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Latency_8192" } }, "name": { "fixed": "8192-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "Latency_524288" } }, "name": { "fixed": "524288-flows" } }
+        ],
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
@@ -152,13 +197,22 @@
         { "expr": "label_replace((Lost{job=\"rapid\", flows=\"524288\"} / Sent{job=\"rapid\", flows=\"524288\"}) * 100, \"__name__\", \"LossPercent_524288\", \"\", \"\")", "instant": true, "refId": "C" }
       ],
       "transformations": [
-        { "id": "labelsToFields", "options": {} },
+        { "id": "labelsToFields", "options": { "valueLabel": "__name__" } },
         {
           "id": "organize",
           "options": {
             "excludeByName": { "Time": true, "__name__": true, "job": true, "flows": true, "instance": true, "namespace": true, "pod": true, "service": true, "container": true, "endpoint": true },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        },
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
             "indexByName": { "size": 0, "LossPercent_64": 1, "LossPercent_8192": 2, "LossPercent_524288": 3 },
-            "renameByName": { "LossPercent_64": "64 flows", "LossPercent_8192": "8192 flows", "LossPercent_524288": "524288 flows" }
+            "renameByName": {}
           }
         },
         { "id": "convertFieldType", "options": { "conversions": [{ "targetField": "size", "destinationType": "number" }], "fields": {} } },
@@ -170,11 +224,17 @@
           "custom": { "show": "points+lines", "pointSize": { "fixed": 5 }, "lineWidth": 2, "axisPlacement": "auto", "axisLabel": "Loss (%)" }
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }] }
+          { "matcher": { "id": "byName", "options": "size" }, "properties": [{ "id": "custom.axisLabel", "value": "Packet size (bytes)" }, { "id": "unit", "value": "none" }] }
         ]
       },
+      "pluginVersion": "11.5.5",
       "options": {
-        "seriesMapping": "auto",
+        "mapping": "manual",
+        "series": [
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "LossPercent_64" } }, "name": { "fixed": "64-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "LossPercent_8192" } }, "name": { "fixed": "8192-flows" } },
+          { "frame": { "matcher": { "id": "byIndex", "options": 0 } }, "x": { "matcher": { "id": "byName", "options": "size" } }, "y": { "matcher": { "id": "byName", "options": "LossPercent_524288" } }, "name": { "fixed": "524288-flows" } }
+        ],
         "tooltip": { "mode": "single" },
         "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       }
