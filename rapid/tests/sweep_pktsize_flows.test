@@ -16,9 +16,10 @@
 # CHECK README IN THIS DIRECTORY FOR MORE EXPLANATION ON PARAMETERS IN THIS
 # FILE.
 #
-# Sweeps the classic RFC 2544 frame sizes against a handful of flow counts
-# at a fixed offered load (startspeed, no ramp_step) -- 7 sizes x 3 flow
-# counts = 21 pushed data points, meant to be graphed as
+# Sweeps the classic RFC 2544 frame sizes against a handful of flow counts,
+# binary-searching for the max no-loss throughput per (size, flows)
+# combination up to line rate (startspeed=100, no ramp_step) -- 7 sizes x 3
+# flow counts = 21 pushed data points, meant to be graphed as
 # throughput/latency/loss vs packet size, one series per flow count (see
 # the "rapidPROX Sweep" Grafana dashboard bundled with charts/prox). Each
 # (flows, size) combination is pushed to Pushgateway under its own grouping
@@ -61,9 +62,12 @@ lat_avg_threshold = 50
 lat_perc_threshold = 80
 lat_max_threshold = inf
 accuracy = 1
-# Fixed offered load rather than a ramp_step search for max throughput --
-# keeps the whole sweep's runtime predictable (~ (7*3) * (runtime + a few
-# seconds warmup/setup) ). Raise this, or add ramp_step, for a "maximum
-# no-loss throughput per frame size" style sweep instead -- it'll just take
-# longer per point.
-startspeed = 50
+# Upper bound of the binary search (see new_speed()/get_start_speed_and_init()
+# in rapid_flowsizetest.py: maxspeed is initialized to startspeed and only
+# ever lowered on a failed/lossy iteration, never raised) -- NOT just a
+# starting point. speed is always a percentage of a fixed 10Gb/s reference
+# (get_percentageof10Gbps/get_pps in rapid_test.py), regardless of the
+# actual NIC's rated speed. 100 lets the search discover throughput up to
+# full 10Gb/s line rate per frame size; lower it only to deliberately cap
+# the sweep below line rate.
+startspeed = 100
