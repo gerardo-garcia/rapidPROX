@@ -26,6 +26,7 @@ from builtins import object
 import os
 import sys
 import ipaddress
+import signal
 import concurrent.futures
 from concurrent.futures import ALL_COMPLETED
 from rapid_cli import RapidCli
@@ -243,6 +244,13 @@ class RapidTestManager(object):
 def main():
     """Main function.
     """
+    # Turn SIGTERM (e.g. 'kubectl exec' dropping, pod shutdown) into the same
+    # path as Ctrl-C so run_tests()'s cleanup still stops PROX on every
+    # machine; otherwise Python dies without running 'finally' and leaves
+    # PROX holding the dataplane VF/hugepages, breaking the next run.
+    def _sigterm_handler(signum, frame):
+        raise KeyboardInterrupt()
+    signal.signal(signal.SIGTERM, _sigterm_handler)
     test_params = RapidTestManager.get_defaults()
     # When no cli is used, the process_cli can be replaced by code modifying
     # test_params

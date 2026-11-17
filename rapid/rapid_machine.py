@@ -264,6 +264,13 @@ class RapidMachine(object):
                 self._client.scp_put(self.machine_params['config_file'], '{}/{}'.
                         format(self.rundir, prox_config_file_name))
                 if not self.configonly:
+                    if self.vim in ['kubernetes']:
+                        # Pods are long-lived: a PROX left over from an
+                        # uncleanly-terminated earlier run would still hold
+                        # the VF, hugepages and EAL socket and make this
+                        # start fail. -x matches the process name only, so
+                        # it can't hit the shell running this command.
+                        self._client.run_cmd('sudo pkill -x prox; sleep 1; true')
                     cmd = 'sudo {}/prox {} -t -o cli -f {}/{}'.format(self.rundir,
                             autostart, self.rundir, prox_config_file_name)
                     RapidLog.debug("Starting PROX on {}: {}".format(self.name,
