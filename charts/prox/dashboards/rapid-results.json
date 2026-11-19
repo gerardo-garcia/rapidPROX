@@ -1,0 +1,229 @@
+{
+  "uid": "rapidprox-results",
+  "title": "rapidPROX Results",
+  "description": "Latest peak-throughput test result pushed by the rapid controller to the chart's bundled Pushgateway (rapid/format.yaml, job=\"rapid\"). One value per metric -- Pushgateway holds only the most recent push, so each panel's history is a step chart of successive test runs, not a continuous measurement. A rapid-sweep test run pushes one flows/size combination per grouping key, so every combination stays queryable at once; every query here is filtered down to the single flows/size combination with the highest (size, flows) score, which is always the last iteration of a sweep (rapid_flowsizetest.py iterates packet sizes outer, flow counts inner, both ascending) and the only combination of a single (non-sweep) test.",
+  "tags": ["rapidprox"],
+  "timezone": "",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Latest run",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Throughput (Mpps)",
+      "description": "Total{job=\"rapid\"} -- total offered traffic rate of the last test iteration.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 3,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "Total{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Total", "refId": "A" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Latency (µs)",
+      "description": "PCTLatency{job=\"rapid\"} -- the percentile configured via lat_percentile in the .test file (99th by default).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 100 }, { "color": "red", "value": 1000 }] }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "PCTLatency{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Latency", "refId": "A" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Packets Lost",
+      "description": "Lost{job=\"rapid\"} -- absolute packet count dropped during the last test iteration.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "Lost{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Lost", "refId": "A" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Loss Ratio (%)",
+      "description": "Lost / Sent * 100, computed from the last test iteration.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 3,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 0.1 }, { "color": "red", "value": 1 }] }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "area",
+        "colorMode": "value",
+        "textMode": "auto"
+      },
+      "targets": [
+        { "expr": "(Lost{job=\"rapid\"} / Sent{job=\"rapid\"}) * 100 and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Loss ratio", "refId": "A" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "History (one point per test run)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Throughput over time (Mpps)",
+      "description": "Total (offered) vs RevByCore (actually received/forwarded) per test run.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "spanNulls": true, "fillOpacity": 10, "pointSize": 5, "showPoints": "always" }
+        }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "Total{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Total (offered)", "refId": "A" },
+        { "expr": "RevByCore{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "RevByCore (received)", "refId": "B" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Latency over time (µs)",
+      "description": "PCTLatency per test run.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "spanNulls": true, "fillOpacity": 10, "pointSize": 5, "showPoints": "always" }
+        }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "expr": "PCTLatency{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Latency", "refId": "A" }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Test parameters",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Flows",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none", "colorMode": "none", "textMode": "auto" },
+      "targets": [{ "expr": "Flows{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Flows", "refId": "A" }]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Packet Size (bytes)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 1 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none", "colorMode": "none", "textMode": "auto" },
+      "targets": [{ "expr": "Size{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Size", "refId": "A" }]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Sent (packets)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none", "colorMode": "none", "textMode": "auto" },
+      "targets": [{ "expr": "Sent{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "Sent", "refId": "A" }]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Power (CPU / RAM / System)",
+      "description": "CPUPower/RAMPower/SystemPower{job=\"rapid\"} -- only non-zero if a power measurement source is configured for the test.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "watt", "decimals": 1 } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "graphMode": "none", "colorMode": "none", "textMode": "auto", "orientation": "vertical" },
+      "targets": [
+        { "expr": "CPUPower{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "CPU", "refId": "A" },
+        { "expr": "RAMPower{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "RAM", "refId": "B" },
+        { "expr": "SystemPower{job=\"rapid\"} and on(flows, size) topk(1, Size{job=\"rapid\"} * 2000000000 + Flows{job=\"rapid\"})", "legendFormat": "System", "refId": "C" }
+      ]
+    }
+  ]
+}

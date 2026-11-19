@@ -1,0 +1,47 @@
+{{/*
+Copyright (C) 2023-2026 rapidPROX contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+{{- if not (has .Values.network.mode (list "sriov" "hostDevice")) -}}
+{{- fail (printf "network.mode must be \"sriov\" or \"hostDevice\", got %q" .Values.network.mode) -}}
+{{- end -}}
+{{- if and .Values.network.ipam.enabled (not .Values.network.ipam.subnet) -}}
+{{- fail "network.ipam.subnet is required when network.ipam.enabled=true" -}}
+{{- end -}}
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: {{ include "prox.fullname" . }}-dataplane
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prox.labels" . | nindent 4 }}
+  annotations:
+    # Tells Multus which device-plugin resource pool to allocate the
+    # dataplane NIC from; must match a resource under
+    # `kubectl get node <node> -o jsonpath='{.status.allocatable}'` and the
+    # resource request/limit set on the Deployment's container.
+    k8s.v1.cni.cncf.io/resourceName: {{ .Values.network.resourceName }}
+spec:
+  config: |
+    {{- $cfg := dict "cniVersion" "0.4.0" "name" (printf "%s-dataplane" (include "prox.fullname" .)) }}
+    {{- $_ := set $cfg "type" (ternary "sriov" "host-device" (eq .Values.network.mode "sriov")) }}
+    {{- if eq .Values.network.mode "sriov" }}
+    {{- if gt (int .Values.network.vlan) 0 }}
+    {{- $_ := set $cfg "vlan" (int .Values.network.vlan) }}
+    {{- end }}
+    {{- $_ := set $cfg "spoofchk" (.Values.network.spoofchk | toString) }}
+    {{- $_ := set $cfg "trust" (.Values.network.trust | toString) }}
+    {{- end }}
+    {{- if .Values.network.mtu }}
+    {{- $_ := set $cfg "mtu" (int .Values.network.mtu) }}
+    {{- end }}
+    {{- if .Values.network.ipam.enabled }}
+    {{- $ipam := dict "type" "whereabouts" "range" .Values.network.ipam.subnet }}
+    {{- if .Values.network.ipam.rangeStart }}{{- $_ := set $ipam "range_start" .Values.network.ipam.rangeStart }}{{- end }}
+    {{- if .Values.network.ipam.rangeEnd }}{{- $_ := set $ipam "range_end" .Values.network.ipam.rangeEnd }}{{- end }}
+    {{- if .Values.network.ipam.gateway }}{{- $_ := set $ipam "gateway" .Values.network.ipam.gateway }}{{- end }}
+    {{- $_ := set $cfg "ipam" $ipam }}
+    {{- else }}
+    {{- $_ := set $cfg "ipam" dict }}
+    {{- end }}
+    {{ $cfg | toJson }}

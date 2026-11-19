@@ -1,0 +1,36 @@
+{{/*
+Copyright (C) 2023-2026 rapidPROX contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+{{- if .Values.controller.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "prox.fullname" . }}-rapid-env
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prox.labels" . | nindent 4 }}
+data:
+  # Minimal rapid.env for RapidConfigParser.parse_config (rapid/rapid_parser.py):
+  # dp_ip1 is deliberately omitted -- when START_DP_IP is set (see
+  # dataplane-ip ConfigMap / controller-deployment.yaml), RapidTestManager
+  # injects it itself before machines are constructed. `name` is likewise
+  # omitted -- it comes from the .test file's [TestMx] section and is what
+  # dest_machine references actually match against.
+  rapid.env: |
+    [rapid]
+    total_number_of_machines = {{ .Values.replicaCount }}
+
+    [ssh]
+    user = rapid
+
+    [Varia]
+    vim = kubernetes
+    {{- range $i := until (int $.Values.replicaCount) }}
+
+    [M{{ add $i 1 }}]
+    admin_ip = {{ include "prox.fullname" $ }}-{{ $i }}.{{ include "prox.fullname" $ }}.{{ $.Release.Namespace }}.svc.cluster.local
+    admin_port = 9090
+    socket_port = 8474
+    {{- end }}
+{{- end }}

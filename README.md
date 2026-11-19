@@ -137,6 +137,14 @@ Total{instance="",job="rapid"} 171.79510539276112
 
 of which ```RevByCore``` is the Mpps result.
 
+## Helm chart
+
+A Helm chart at [charts/prox/](./charts/prox/) deploys a configurable-size StatefulSet of `prox` pods on a dedicated Multus network (SR-IOV or PCI passthrough, VLAN and IPAM configurable), plus a `rapid` controller pod already wired up to drive a throughput test between them, and optionally a Pushgateway and Grafana dashboards for the results. See [charts/prox/README.md](./charts/prox/README.md). It is published as an OCI artifact by [.github/workflows/helm-publish.yml](./.github/workflows/helm-publish.yml) on every push to `master` and on version tags `vX.Y.Z`:
+
+```
+helm install prox oci://ghcr.io/<owner>/charts/prox --version <version> -n prox --create-namespace
+```
+
 ## Clean
 
 Delete whole namespace with

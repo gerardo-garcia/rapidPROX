@@ -1,0 +1,15 @@
+{{/*
+Copyright (C) 2023-2026 rapidPROX contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+{{- if and .Values.controller.enabled .Values.controller.extraTestFiles }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "prox.fullname" . }}-controller-testfiles
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prox.labels" . | nindent 4 }}
+data:
+  {{- toYaml .Values.controller.extraTestFiles | nindent 2 }}
+{{- end }}

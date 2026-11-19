@@ -1,0 +1,26 @@
+{{/*
+Copyright (C) 2023-2026 rapidPROX contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+{{- if and .Values.pushgateway.enabled .Values.pushgateway.grafanaDashboard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "prox.fullname" . }}-pushgateway-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "prox.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pushgateway
+    # The kube-prometheus-stack / Rancher "grafana-sc-dashboard" sidecar
+    # watches for ConfigMaps carrying this label (any namespace, per its
+    # NAMESPACE=ALL default) and auto-imports their JSON into Grafana --
+    # no manual dashboard import needed. Override
+    # pushgateway.grafanaDashboard.label/labelValue if your Grafana sidecar
+    # is configured differently.
+    {{ .Values.pushgateway.grafanaDashboard.label }}: {{ .Values.pushgateway.grafanaDashboard.labelValue | quote }}
+data:
+  rapid-results.json: |
+{{ .Files.Get "dashboards/rapid-results.json" | indent 4 }}
+  rapid-sweep.json: |
+{{ .Files.Get "dashboards/rapid-sweep.json" | indent 4 }}
+{{- end }}

@@ -1,0 +1,200 @@
+## Copyright (C) 2023-2026 rapidPROX contributors
+## SPDX-License-Identifier: Apache-2.0
+
+# Number of PROX replicas to deploy. The performance test runs BETWEEN two
+# of these replicas (one acting as traffic generator, one as the device
+# under test/swap) -- see chart NOTES after install. Values above 2 add
+# extra replicas on the same dataplane network (e.g. spares, or manually
+# driven multi-node topologies); today's rapidPROX test tooling addresses
+# machines individually and does not auto-orchestrate more than a pair.
+replicaCount: 2
+
+image:
+  # Published by .github/workflows/docker-publish.yml as
+  # ghcr.io/<repository_owner>/prox. Defaults to this repo's own GHCR
+  # namespace; override to match wherever your fork/org actually publishes.
+  repository: ghcr.io/rapidprox/prox
+  # Empty means the chart's appVersion. The Helm publish workflow stamps
+  # both the chart version and appVersion with the release tag X.Y.Z, the
+  # same tag the image is published under, so a released chart always runs
+  # the matching image. Set it to pin something else; avoid "latest":
+  # mutable tags are rejected outright by some clusters' admission
+  # policies, and a pinned tag makes what a release runs reproducible.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+
+network:
+  # "sriov"      - SR-IOV Virtual Function via the sriov-cni plugin. Supports
+  #                VLAN tagging (network.vlan) and spoofchk/trust directly.
+  # "hostDevice" - Whole PCI device (PF or VF) passed through via the
+  #                host-device CNI plugin. No CNI-level VLAN tagging: the
+  #                VLAN must already be configured on the device/switch port
+  #                out of band, network.vlan is ignored in this mode.
+  mode: sriov
+
+  # Resource name advertised by the device plugin that manages the dataplane
+  # NIC, e.g. intel.com/intel_sriov_vfio, intel.com/intel_sriov_netdevice,
+  # nvidia.com/mlx5_core... Run `kubectl get node <name> -o
+  # jsonpath='{.status.allocatable}'` to see what your cluster advertises.
+  # Required: used both for Multus device selection and for the pod's
+  # resource request/limit.
+  resourceName: intel.com/intel_sriov_vfio
+
+  # 802.1Q VLAN id for the dataplane network. Only applied when
+  # network.mode=sriov. Set to 0 to disable VLAN tagging.
+  vlan: 0
+
+  # Optional MTU override passed to the CNI plugin. Leave empty to inherit
+  # the PF/VF default.
+  mtu: ""
+
+  # sriov-cni anti-spoofing / VF trust settings (network.mode=sriov only).
+  spoofchk: "off"
+  trust: "on"
+
+  ipam:
+    # CNI-level IPAM is normally left disabled: PROX drives the NIC directly
+    # through DPDK (vfio-pci), so the interface never appears in the pod's
+    # kernel network namespace and the CNI/kernel cannot address it anyway.
+    # Only enable this if your device plugin/driver leaves the interface
+    # kernel-visible (e.g. netdevice-mode SR-IOV) and something other than
+    # PROX itself needs a routable IP on it.
+    enabled: false
+    subnet: ""       # required if enabled, e.g. "192.168.100.0/24"
+    rangeStart: ""   # optional
+    rangeEnd: ""     # optional
+    gateway: ""      # optional
+
+# Logical dataplane addressing used BY rapidPROX itself (independent of any
+# CNI IPAM above) to generate test traffic: each replica is handed a
+# sequential IP starting at startIP, the same mechanism already used by
+# k8s/1-ip-cm.yaml / the START_DP_IP env var for the plain-manifest
+# deployment (see runrapid.py). Rendered into a ConfigMap so whatever runs
+# runrapid.py against these replicas can source it directly -- see NOTES.
+dataplane:
+  startIP: "10.10.10.100/24"
+
+resources:
+  requests:
+    cpu: 4
+    memory: 2Gi
+    hugepages-1Gi: 1Gi
+  limits:
+    cpu: 4
+    memory: 2Gi
+    hugepages-1Gi: 1Gi
+
+# Must reference the same hugepage size used as a "hugepages-<size>" key
+# under resources.* above.
+hugepagesMedium: HugePages-1Gi
+
+securityContext:
+  privileged: true
+  capabilities:
+    add: ["IPC_LOCK", "SYS_ADMIN"]
+
+# Best-effort spread of replicas across distinct nodes, so the test actually
+# exercises the network fabric instead of two pods landing on one host.
+spreadAcrossNodes: true
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Deploys a "rapid" controller pod alongside the StatefulSet, wired up to
+# drive a test against the replicas: it gets a ready-to-use rapid.env
+# (auto-rendered from the StatefulSet's ordinal DNS names, see
+# templates/rapid-env-configmap.yaml) and the START_DP_IP env var, so no
+# manual environment/machine-map authoring is needed -- see chart NOTES for
+# how to trigger a run.
+controller:
+  enabled: true
+  image:
+    # Published by .github/workflows/docker-publish.yml as
+    # ghcr.io/<repository_owner>/rapid. Empty tag means the chart's
+    # appVersion, for the same reasons as image.tag above.
+    repository: ghcr.io/rapidprox/rapid
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  # Default test/runtime used when triggering runrapid.py manually, and the
+  # ones actually used if runOnStart is enabled below. Path is relative to
+  # the rapid image's /opt/rapidPROX/rapid working directory -- the shipped
+  # rapid/tests/*.test files are already baked in there.
+  test: tests/basicrapid.test
+  runtime: 10
+
+  # If true, the controller runs `test` once immediately (and again on every
+  # pod restart/upgrade) instead of idling for a manual `kubectl exec`.
+  runOnStart: false
+
+  # Extra/custom .test files to make available under tests/ inside the
+  # controller pod, e.g. for replica counts the shipped tests don't cover:
+  #   extraTestFiles:
+  #     custom.test: |
+  #       [TestParameters]
+  #       ...
+  extraTestFiles: {}
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Companion Prometheus Pushgateway that the controller's default test
+# pushes FlowSizeTest results to (see rapid/format.yaml, "Format:
+# PushGateway"). On by default so a fresh install works out of the box;
+# disable if you already run a Pushgateway elsewhere -- note the target
+# host is hardcoded in format.yaml as "pushgateway", so pointing at an
+# external one currently means running your own with that same in-cluster
+# name, not a values.yaml override.
+pushgateway:
+  enabled: true
+  image:
+    repository: prom/pushgateway
+    tag: v1.11.3
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  serviceMonitor:
+    # Requires the Prometheus Operator CRDs (ServiceMonitor) -- e.g.
+    # kube-prometheus-stack, or Rancher's rancher-monitoring. Off by
+    # default since not every cluster has these installed; enabling this
+    # on one that doesn't will fail the install. When on, lets an
+    # already-running Prometheus scrape this Pushgateway automatically so
+    # results show up in Grafana without manual port-forwarding.
+    enabled: false
+    interval: 30s
+    # Extra labels merged onto the ServiceMonitor object, for clusters
+    # whose Prometheus only discovers ServiceMonitors matching specific
+    # labels (e.g. release: rancher-monitoring) instead of all of them --
+    # check your Prometheus CR's spec.serviceMonitorSelector.
+    labels: {}
+
+  grafanaDashboard:
+    # Deploys a ConfigMap (charts/prox/dashboards/rapid-results.json) that
+    # the kube-prometheus-stack / Rancher "grafana-sc-dashboard" sidecar
+    # auto-imports into Grafana -- no manual dashboard import needed. Off
+    # by default since that sidecar isn't guaranteed to be running; it's
+    # harmless to enable otherwise (an inert ConfigMap). Needs
+    # serviceMonitor.enabled (or an equivalent scrape config with
+    # honorLabels) for the job="rapid" data the dashboard queries to
+    # actually reach Prometheus.
+    enabled: false
+    label: grafana_dashboard
+    labelValue: "1"
