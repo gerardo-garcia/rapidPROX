@@ -1,0 +1,69 @@
+##
+## Copyright (c) 2023-2026 rapidPROX contributors
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+# CHECK README IN THIS DIRECTORY FOR MORE EXPLANATION ON PARAMETERS IN THIS
+# FILE.
+#
+# Sweeps the classic RFC 2544 frame sizes against a handful of flow counts
+# at a fixed offered load (startspeed, no ramp_step) -- 7 sizes x 3 flow
+# counts = 21 pushed data points, meant to be graphed as
+# throughput/latency/loss vs packet size, one series per flow count (see
+# the "rapidPROX Sweep" Grafana dashboard bundled with charts/prox). Each
+# (flows, size) combination is pushed to Pushgateway under its own grouping
+# key (see RapidTest.post_data in rapid_test.py) so all 21 points persist
+# simultaneously instead of only the last one.
+
+[TestParameters]
+name = PacketSizeFlowsSweep
+number_of_tests = 1
+total_number_of_test_machines = 2
+lat_percentile = 99
+
+[TestM1]
+name = Generator
+config_file = configs/gen.cfg
+dest_machine = Swap
+mcore = [0]
+gencores = [1]
+latcores = [3]
+
+[TestM2]
+name = Swap
+config_file = configs/swap.cfg
+mcore = [0]
+cores = [1]
+
+[test1]
+test=flowsizetest
+warmupflowsize=512
+warmupimix=[64]
+warmupspeed=1
+warmuptime=2
+# One fixed size per test (single-element imix = no size averaging) --
+# standard RFC 2544 frame sizes.
+imixs=[[64],[128],[256],[512],[1024],[1280],[1518]]
+# Small/medium/large flow counts (powers of 2, see README).
+flows=[64,8192,524288]
+drop_rate_threshold = 0.1
+lat_avg_threshold = 50
+lat_perc_threshold = 80
+lat_max_threshold = inf
+accuracy = 1
+# Fixed offered load rather than a ramp_step search for max throughput --
+# keeps the whole sweep's runtime predictable (~ (7*3) * (runtime + a few
+# seconds warmup/setup) ). Raise this, or add ramp_step, for a "maximum
+# no-loss throughput per frame size" style sweep instead -- it'll just take
+# longer per point.
+startspeed = 50

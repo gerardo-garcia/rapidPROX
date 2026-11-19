@@ -7,13 +7,15 @@ Format: PushGateway
   part1: http://testresults.opnfv.org/test/api/v1/results
 URL:
   part1: http://pushgateway:9091/metrics/job/rapid/
-FlowSizeTest:                           
+FlowSizeTest:
   Flows: Flows
   Size: Size
   Sent: abs_tx
   Total: TotalTrafficRate
   RevByCore: pps_rx
+  AvgLatency: lat_avg
   PCTLatency: lat_perc
+  MaxLatency: lat_max
   Lost: abs_dropped
   SystemPower: Sys
   CPUPower: Cpu
