@@ -66,7 +66,7 @@ helm install prox ./charts/prox -n prox --create-namespace
 |---|---|---|
 | `replicaCount` | `2` | Number of PROX replicas. The test runs between two of them; see chart NOTES. |
 | `image.repository` | `ghcr.io/gerardo-garcia/prox` | prox image, published by `.github/workflows/docker-publish.yml` as `ghcr.io/<repository_owner>/prox`. Override to point at your own fork/registry. |
-| `image.tag` | `0.1.4` | Image tag. Pinned to a released version rather than `latest` -- some clusters' admission policies reject mutable tags outright. |
+| `image.tag` | `0.1.5` | Image tag. Pinned to a released version rather than `latest` -- some clusters' admission policies reject mutable tags outright. |
 | `image.pullPolicy` | `IfNotPresent` | |
 | `network.mode` | `sriov` | `sriov` (SR-IOV VF via sriov-cni, supports VLAN tagging) or `hostDevice` (whole PCI device via host-device CNI, no CNI-level VLAN tagging). |
 | `network.resourceName` | `intel.com/intel_sriov_vfio` | Device-plugin resource backing the dataplane NIC. Used for both the Multus `resourceName` annotation and the pod's resource request/limit. |
@@ -86,7 +86,7 @@ helm install prox ./charts/prox -n prox --create-namespace
 | `nodeSelector` / `tolerations` / `affinity` | `{}` / `[]` / `{}` | Standard pod scheduling overrides for the PROX StatefulSet. |
 | `podAnnotations` / `podLabels` | `{}` | Extra metadata merged onto PROX pods. |
 | `controller.enabled` | `true` | Deploy the "rapid" controller pod + its generated `rapid.env` ConfigMap. Set `false` to deploy PROX infrastructure only (see NOTES for the manual flow). |
-| `controller.image.repository` / `tag` / `pullPolicy` | `ghcr.io/gerardo-garcia/rapid` / `0.1.4` / `IfNotPresent` | rapid image, published by `.github/workflows/docker-publish.yml` as `ghcr.io/<repository_owner>/rapid`. |
+| `controller.image.repository` / `tag` / `pullPolicy` | `ghcr.io/gerardo-garcia/rapid` / `0.1.5` / `IfNotPresent` | rapid image, published by `.github/workflows/docker-publish.yml` as `ghcr.io/<repository_owner>/rapid`. |
 | `controller.test` | `tests/basicrapid.test` | Default `.test` file (path inside the rapid image) used for manual runs and for `runOnStart`. |
 | `controller.runtime` | `10` | Seconds per test iteration, maps to `runrapid.py --runtime`. |
 | `controller.runOnStart` | `false` | If `true`, the controller runs `controller.test` once on start (and again on every pod restart/upgrade) instead of idling for a manual `kubectl exec`. |
