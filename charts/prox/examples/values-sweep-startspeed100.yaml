@@ -1,0 +1,86 @@
+## Copyright (C) 2023-2026 rapidPROX contributors
+## SPDX-License-Identifier: Apache-2.0
+
+# Example: tune a shipped test's parameters per-deployment without touching
+# the rapid image, via controller.extraTestFiles (see charts/prox/README.md).
+#
+# tests/sweep_pktsize_flows.test ships with startspeed=50 (offered load
+# capped at 50% of the fixed 10Gb/s speed reference used throughout
+# rapid_test.py/rapid_flowsizetest.py). This is a full copy of that test
+# with startspeed raised to 100, so flowsizetest's binary search (whose
+# upper bound is startspeed itself -- see new_speed()/
+# get_start_speed_and_init() in rapid_flowsizetest.py) can discover
+# throughput up to full 10Gb/s line rate per frame size instead of being
+# capped at 5Gb/s.
+#
+# It's delivered under a different filename than the shipped test, so both
+# are available in the controller pod side by side:
+#   kubectl -n <namespace> exec deploy/<release>-controller -- \
+#     ./runrapid.py --test tests/sweep_pktsize_flows_startspeed100.test --runtime 10
+#
+# Merge this with whatever other values (network.*, controller.image.tag,
+# ...) your deployment already uses, e.g.:
+#   helm upgrade <release> charts/prox -n <namespace> \
+#     -f my-cluster-values.yaml -f charts/prox/examples/values-sweep-startspeed100.yaml
+
+controller:
+  extraTestFiles:
+    sweep_pktsize_flows_startspeed100.test: |
+      ##
+      ## Copyright (c) 2023-2026 rapidPROX contributors
+      ##
+      ## Licensed under the Apache License, Version 2.0 (the "License");
+      ## you may not use this file except in compliance with the License.
+      ## You may obtain a copy of the License at
+      ##
+      ##     http://www.apache.org/licenses/LICENSE-2.0
+      ##
+      ## Unless required by applicable law or agreed to in writing, software
+      ## distributed under the License is distributed on an "AS IS" BASIS,
+      ## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+      ## See the License for the specific language governing permissions and
+      ## limitations under the License.
+      ##
+      # Copy of tests/sweep_pktsize_flows.test (shipped with startspeed=50)
+      # with startspeed raised to 100, delivered via controller.extraTestFiles
+      # instead of editing the shipped test -- see chart README. speed is
+      # always a percentage of a fixed 10Gb/s reference (get_pps in
+      # rapid_test.py), and for flowsizetest the binary search's upper bound
+      # is startspeed itself (see new_speed()/get_start_speed_and_init() in
+      # rapid_flowsizetest.py) -- so 100 lets the search discover throughput
+      # up to full 10Gb/s line rate per frame size.
+
+      [TestParameters]
+      name = PacketSizeFlowsSweep_Startspeed100
+      number_of_tests = 1
+      total_number_of_test_machines = 2
+      lat_percentile = 99
+
+      [TestM1]
+      name = Generator
+      config_file = configs/gen.cfg
+      dest_machine = Swap
+      mcore = [0]
+      gencores = [1]
+      latcores = [3]
+
+      [TestM2]
+      name = Swap
+      config_file = configs/swap.cfg
+      mcore = [0]
+      cores = [1]
+
+      [test1]
+      test=flowsizetest
+      warmupflowsize=512
+      warmupimix=[64]
+      warmupspeed=1
+      warmuptime=2
+      imixs=[[64],[128],[256],[512],[1024],[1280],[1518]]
+      flows=[64,8192,524288]
+      drop_rate_threshold = 0.1
+      lat_avg_threshold = 50
+      lat_perc_threshold = 80
+      lat_max_threshold = inf
+      accuracy = 1
+      startspeed = 100

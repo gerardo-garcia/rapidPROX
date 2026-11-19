@@ -1,0 +1,86 @@
+## Copyright (C) 2023-2026 rapidPROX contributors
+## SPDX-License-Identifier: Apache-2.0
+
+# Example: like values-sweep-startspeed100.yaml, but also spreads packet
+# generation and forwarding across 2 cores per role instead of 1, to push
+# closer to line-rate pps for small frames (64B needs ~14.88 Mpps at
+# 10Gb/s, well above what a single gencore can produce -- see the
+# "Generator limit?" warning rapid_test.py prints when the gencore(s)
+# can't keep up with the requested speed).
+#
+# Both gen.cfg's "[core $gencores]" and swap.cfg's "[core $cores]" already
+# apply their task to however many cores are listed, and
+# rapid_generator_machine.py's set_generator_speed() automatically divides
+# the requested speed evenly across all configured gencores -- so this is a
+# pure .test change, no config/code changes needed.
+#
+# CPU budget: fits inside the chart's default resources.requests.cpu: 4
+# per replica without any values change -- today's default test file only
+# uses 3 of those 4 cores on the generator side (mcore, 1 gencore,
+# 1 latcore) and 2 of 4 on the swap side (mcore, 1 core), so there's
+# already a spare core on each role to promote to a second gencore/core.
+#
+# Usage: same as values-sweep-startspeed100.yaml -- merge with your
+# cluster-specific values, e.g.:
+#   helm upgrade <release> charts/prox -n <namespace> \
+#     -f my-cluster-values.yaml -f charts/prox/examples/values-sweep-startspeed100-2cores.yaml
+
+controller:
+  extraTestFiles:
+    sweep_pktsize_flows_startspeed100_2cores.test: |
+      ##
+      ## Copyright (c) 2023-2026 rapidPROX contributors
+      ##
+      ## Licensed under the Apache License, Version 2.0 (the "License");
+      ## you may not use this file except in compliance with the License.
+      ## You may obtain a copy of the License at
+      ##
+      ##     http://www.apache.org/licenses/LICENSE-2.0
+      ##
+      ## Unless required by applicable law or agreed to in writing, software
+      ## distributed under the License is distributed on an "AS IS" BASIS,
+      ## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+      ## See the License for the specific language governing permissions and
+      ## limitations under the License.
+      ##
+      # Copy of tests/sweep_pktsize_flows.test (shipped with startspeed=50,
+      # 1 gencore, 1 swap core) with startspeed raised to 100 and a second
+      # core added on both the generator (gencores) and swap (cores) side,
+      # so small-frame throughput isn't capped by single-core pps
+      # generation/forwarding. Delivered via controller.extraTestFiles
+      # instead of editing the shipped test -- see chart README.
+
+      [TestParameters]
+      name = PacketSizeFlowsSweep_Startspeed100_2Cores
+      number_of_tests = 1
+      total_number_of_test_machines = 2
+      lat_percentile = 99
+
+      [TestM1]
+      name = Generator
+      config_file = configs/gen.cfg
+      dest_machine = Swap
+      mcore = [0]
+      gencores = [1,2]
+      latcores = [3]
+
+      [TestM2]
+      name = Swap
+      config_file = configs/swap.cfg
+      mcore = [0]
+      cores = [1,2]
+
+      [test1]
+      test=flowsizetest
+      warmupflowsize=512
+      warmupimix=[64]
+      warmupspeed=1
+      warmuptime=2
+      imixs=[[64],[128],[256],[512],[1024],[1280],[1518]]
+      flows=[64,8192,524288]
+      drop_rate_threshold = 0.1
+      lat_avg_threshold = 50
+      lat_perc_threshold = 80
+      lat_max_threshold = inf
+      accuracy = 1
+      startspeed = 100
