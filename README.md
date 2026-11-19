@@ -146,6 +146,17 @@ cd k8s
 kubectl delete -f 0-ns.yaml
 ```
 
+## CI-published images
+
+The `prox` and `rapid` images are automatically built and published to GitHub Container Registry on every push to `master` (tags `latest` and `sha-<short>`) and on version tags `vX.Y.Z` (which add `X.Y.Z` and `X.Y`), see [.github/workflows/docker-publish.yml](./.github/workflows/docker-publish.yml):
+
+```
+ghcr.io/<owner>/prox:<tag>
+ghcr.io/<owner>/rapid:<tag>
+```
+
+Both images are built from the repository root, so they always reflect the commit being built (`rapid/docker/build.sh` does the same locally). GHCR packages are private when first published; a repository owner needs to set each package to Public once.
+
 ## Validated OS, k8s distribution and server/VM
 
 Ubuntu 24.04.4 LTS, k3s v1.34.6+k3s1, AWS EC2 c8i.2xlarge (with two added vNICs used as DPDK interfaces, host-device plugin, NAD and [k8s/host-device/](./k8s/host-device/)).

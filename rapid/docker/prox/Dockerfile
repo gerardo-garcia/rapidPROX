@@ -14,6 +14,14 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
+##
+## Build context for this Dockerfile is the REPOSITORY ROOT, not this
+## directory, e.g.:
+##   docker build -f rapid/docker/prox/Dockerfile -t prox .
+## (rapid/docker/build.sh already does this.) That's so the image is built
+## from the local working tree/commit being built, instead of re-fetching
+## the upstream repo from GitHub.
+##
 
 ##################################################
 # Build all components in separate builder image #
@@ -75,9 +83,12 @@ RUN meson setup build \
 
 WORKDIR ${BUILD_DIR}
 
-# Install Prox
-RUN git clone https://github.com/rapidPROX/rapidPROX.git \
-        && cd rapidPROX/src \
+# Build PROX from the local working tree (this build context) rather than
+# cloning GitHub, so the image reflects the commit actually being built.
+# .git is copied along with the source tree because src/meson.build derives
+# the project version from `git describe`.
+COPY . ${BUILD_DIR}/rapidPROX/
+RUN cd ${BUILD_DIR}/rapidPROX/src \
         && COMMIT_ID=$(git rev-parse HEAD) \
         && echo "${COMMIT_ID}" > ${BUILD_DIR}/commit_id \
         && meson build \

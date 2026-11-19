@@ -14,16 +14,28 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
+##
+## Build context for this Dockerfile is the REPOSITORY ROOT, not this
+## directory, e.g.:
+##   docker build -f rapid/docker/rapid/Dockerfile -t rapid .
+## (rapid/docker/build.sh already does this.) That's so the image is built
+## from the local working tree/commit being built, instead of re-fetching
+## the upstream repo from GitHub.
+##
 FROM python:3.12-slim
 
-WORKDIR /opt
+WORKDIR /opt/rapidPROX
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl netcat-openbsd iputils-ping vim \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone repo from GitHub
-RUN git clone https://github.com/rapidPROX/rapidPROX.git
+# rapid's setup.py uses pbr, which otherwise derives the package version from
+# git history; pin it explicitly so the build doesn't need .git at all.
+ARG RAPID_VERSION=0.0.0+unknown
+ENV PBR_VERSION=${RAPID_VERSION}
+
+COPY rapid/ ./rapid/
 
 WORKDIR /opt/rapidPROX/rapid
 
