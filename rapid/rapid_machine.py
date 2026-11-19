@@ -157,11 +157,27 @@ class RapidMachine(object):
             self._allow_parameter = 'pci-whitelist'
         RapidLog.debug("DPDK version %s" % dpdk_version)
 
+    def kill_stale_prox(self):
+        """Stop a PROX left over from an uncleanly-terminated earlier run.
+
+        Pods are long-lived, so such a process keeps holding the VF,
+        hugepages and EAL socket, which makes both port_info_app (MAC
+        lookup) and the next PROX start fail. Only done when rapid itself
+        launches PROX, so a PROX started by the user is never touched.
+        -x matches the process name only, so it can't hit the shell that
+        runs this command.
+        """
+        if (self.vim in ['kubernetes'] and not self.configonly and
+                self.machine_params['prox_launch_exit']):
+            RapidLog.debug("Stopping any stale PROX on %s" % self.name)
+            self._client.run_cmd('sudo pkill -x prox; sleep 1; true')
+
     def get_sriov_dev_mac(self):
         """Get assigned by k8s SRIOV network device plugin SRIOV VF devices.
         Return 0 in case of sucessfull configuration.
         Otherwise return -1.
         """
+        self.kill_stale_prox()
         RapidLog.info("Checking assigned SRIOV VF for POD %s" % self.name)
         cmd_output = self._client.run_cmd("env | grep PCIDEVIC")
         RapidLog.debug("Environment variable %s" % cmd_output)
@@ -264,13 +280,6 @@ class RapidMachine(object):
                 self._client.scp_put(self.machine_params['config_file'], '{}/{}'.
                         format(self.rundir, prox_config_file_name))
                 if not self.configonly:
-                    if self.vim in ['kubernetes']:
-                        # Pods are long-lived: a PROX left over from an
-                        # uncleanly-terminated earlier run would still hold
-                        # the VF, hugepages and EAL socket and make this
-                        # start fail. -x matches the process name only, so
-                        # it can't hit the shell running this command.
-                        self._client.run_cmd('sudo pkill -x prox; sleep 1; true')
                     cmd = 'sudo {}/prox {} -t -o cli -f {}/{}'.format(self.rundir,
                             autostart, self.rundir, prox_config_file_name)
                     RapidLog.debug("Starting PROX on {}: {}".format(self.name,
