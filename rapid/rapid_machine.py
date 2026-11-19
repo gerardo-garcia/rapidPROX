@@ -157,11 +157,27 @@ class RapidMachine(object):
             self._allow_parameter = 'pci-whitelist'
         RapidLog.debug("DPDK version %s" % dpdk_version)
 
+    def kill_stale_prox(self):
+        """Stop a PROX left over from an uncleanly-terminated earlier run.
+
+        Pods are long-lived, so such a process keeps holding the VF,
+        hugepages and EAL socket, which makes both port_info_app (MAC
+        lookup) and the next PROX start fail. Only done when rapid itself
+        launches PROX, so a PROX started by the user is never touched.
+        -x matches the process name only, so it can't hit the shell that
+        runs this command.
+        """
+        if (self.vim in ['kubernetes'] and not self.configonly and
+                self.machine_params['prox_launch_exit']):
+            RapidLog.debug("Stopping any stale PROX on %s" % self.name)
+            self._client.run_cmd('sudo pkill -x prox; sleep 1; true')
+
     def get_sriov_dev_mac(self):
         """Get assigned by k8s SRIOV network device plugin SRIOV VF devices.
         Return 0 in case of sucessfull configuration.
         Otherwise return -1.
         """
+        self.kill_stale_prox()
         RapidLog.info("Checking assigned SRIOV VF for POD %s" % self.name)
         cmd_output = self._client.run_cmd("env | grep PCIDEVIC")
         RapidLog.debug("Environment variable %s" % cmd_output)
@@ -177,10 +193,24 @@ class RapidMachine(object):
 
         # Parse MAC address
         RapidLog.debug(cmd_output)
-        cmd_output = cmd_output.splitlines()
-        for line in cmd_output:
+        self._sriov_vf_mac = None
+        for line in cmd_output.splitlines():
             if line.startswith("Port 0 MAC: "):
                 self._sriov_vf_mac = line[12:]
+
+        if self._sriov_vf_mac is None:
+            # Most common cause: port_info_app couldn't grab the VF because
+            # a PROX process from a previous, uncleanly-terminated run is
+            # still holding it (EAL primary process / hugepages). Surface
+            # the raw port_info_app output instead of failing later with a
+            # confusing AttributeError on a never-set attribute.
+            RapidLog.exception(
+                "Could not determine MAC for SRIOV VF %s on POD %s -- "
+                "port_info_app output was: %s" % (
+                    self._sriov_vf, self.name, cmd_output))
+            raise Exception(
+                "Failed to get MAC address for SRIOV VF {} on POD {}".format(
+                    self._sriov_vf, self.name))
 
         RapidLog.debug("MAC %s" % self._sriov_vf_mac)
 
@@ -261,7 +291,12 @@ class RapidMachine(object):
     def close_prox(self):
         if (not self.configonly) and self.machine_params[
                 'prox_socket'] and self.machine_params['prox_launch_exit']:
-            self.socket.quit_prox()
+            # self.socket is only set once connect_prox() has run; guard
+            # against machines that never got that far (e.g. construction
+            # or an earlier machine's start_prox() failed first) so cleanup
+            # of the *other* machines isn't aborted by this one.
+            if hasattr(self, 'socket'):
+                self.socket.quit_prox()
             self._client.scp_get('prox.log', '{}/{}.prox.log'.format(
                 self.resultsdir, self.name))
 

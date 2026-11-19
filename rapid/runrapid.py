@@ -26,6 +26,7 @@ from builtins import object
 import os
 import sys
 import ipaddress
+import signal
 import concurrent.futures
 from concurrent.futures import ALL_COMPLETED
 from rapid_cli import RapidCli
@@ -59,8 +60,16 @@ class RapidTestManager(object):
             self.prefixlen = iface.network.prefixlen
 
     def __del__(self):
+        # Isolate each machine's cleanup so a failure closing one (e.g. a
+        # socket already gone) doesn't abort quit_prox() for the rest --
+        # normally run_tests()'s own finally block already does this, this
+        # is just a last-resort safety net.
         for machine in self.machines:
-            machine.close_prox()
+            try:
+                machine.close_prox()
+            except Exception as e:
+                RapidLog.error("Failed to close PROX on {}: {}".format(
+                    machine.name, e))
 
     @staticmethod
     def get_defaults():
@@ -152,6 +161,7 @@ class RapidTestManager(object):
 
         self.prepare_generator_destinations()
 
+        prox_executor = socket_executor = None
         try:
             prox_executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(self.machines))
             self.future_to_prox = {prox_executor.submit(machine.start_prox): machine for machine in self.machines}
@@ -202,24 +212,45 @@ class RapidTestManager(object):
                         test_param['test']))
                 single_test_result, result_details = test.run()
                 result = result + single_test_result
-            for machine in self.machines:
-                machine.close_prox()
-            concurrent.futures.wait(self.future_to_prox,
-                    return_when=ALL_COMPLETED)
         except (ConnectionError, KeyboardInterrupt) as e:
             result = result_details = None
-            socket_executor.shutdown(wait=False)
-            socket_executor._threads.clear()
-            prox_executor.shutdown(wait=False)
-            prox_executor._threads.clear()
+            if socket_executor:
+                socket_executor.shutdown(wait=False)
+                socket_executor._threads.clear()
+            if prox_executor:
+                prox_executor.shutdown(wait=False)
+                prox_executor._threads.clear()
             concurrent.futures.thread._threads_queues.clear()
             RapidLog.error("Test interrupted: {} {}".format(
                 type(e).__name__,e))
+        finally:
+            # Always tell PROX to quit on every machine, even if a test (or
+            # its result reporting, e.g. a Pushgateway push) raised
+            # something not caught above -- an uncleanly-stopped PROX keeps
+            # the dataplane device/hugepages held and breaks the next run.
+            # Each machine's cleanup is isolated so one failure doesn't
+            # skip the rest.
+            for machine in self.machines:
+                try:
+                    machine.close_prox()
+                except Exception as close_exc:
+                    RapidLog.error("Failed to cleanly stop PROX on {}: {}".format(
+                        machine.name, close_exc))
+            if prox_executor:
+                concurrent.futures.wait(self.future_to_prox,
+                        return_when=ALL_COMPLETED)
         return (result, result_details)
 
 def main():
     """Main function.
     """
+    # Turn SIGTERM (e.g. 'kubectl exec' dropping, pod shutdown) into the same
+    # path as Ctrl-C so run_tests()'s cleanup still stops PROX on every
+    # machine; otherwise Python dies without running 'finally' and leaves
+    # PROX holding the dataplane VF/hugepages, breaking the next run.
+    def _sigterm_handler(signum, frame):
+        raise KeyboardInterrupt()
+    signal.signal(signal.SIGTERM, _sigterm_handler)
     test_params = RapidTestManager.get_defaults()
     # When no cli is used, the process_cli can be replaced by code modifying
     # test_params
