@@ -1,0 +1,61 @@
+##
+## Copyright (c) 2023-2026 rapidPROX contributors
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+# CHECK README IN THIS DIRECTORY FOR MORE EXPLANATION ON PARAMETERS IN THIS
+# FILE.
+#
+# Quick variant of sweep_pktsize_flows.test for a first look: 3 frame sizes
+# x 1 flow count = 3 pushed data points, in about 3.5 minutes with
+# --runtime 5 on a 10 Gb/s setup. flowsizetest searches up to startspeed
+# (100 = full 10 Gb/s reference) with a coarse accuracy, so results are less
+# precise than the full sweep's. A run overwrites earlier Pushgateway
+# results that have the same packet size and flow count.
+
+[TestParameters]
+name = PacketSizeFlowsSweepQuick
+number_of_tests = 1
+total_number_of_test_machines = 2
+lat_percentile = 99
+
+[TestM1]
+name = Generator
+config_file = configs/gen.cfg
+dest_machine = Swap
+mcore = [0]
+gencores = [1]
+latcores = [3]
+
+[TestM2]
+name = Swap
+config_file = configs/swap.cfg
+mcore = [0]
+cores = [1]
+
+[test1]
+test=flowsizetest
+warmupflowsize=512
+warmupimix=[64]
+warmupspeed=1
+warmuptime=2
+# Smallest, medium and largest RFC 2544 frame sizes, one fixed size per test.
+imixs=[[64],[512],[1518]]
+flows=[64]
+drop_rate_threshold = 0.1
+lat_avg_threshold = 50
+lat_perc_threshold = 80
+lat_max_threshold = inf
+# Stop the search for each size once it is narrowed to 5% of line rate.
+accuracy = 5
+startspeed = 100
