@@ -6,8 +6,8 @@ description: >-
   Deploys PROX dataplane pods on a dedicated Multus network (SR-IOV or PCI
   passthrough) so a rapidPROX peak-throughput test can run between them.
 type: application
-version: 0.1.5
-appVersion: "0.1.5"
+version: 0.1.6
+appVersion: "0.1.6"
 home: https://github.com/rapidPROX/rapidPROX
 sources:
   - https://github.com/rapidPROX/rapidPROX

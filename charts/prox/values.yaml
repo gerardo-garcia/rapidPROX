@@ -17,7 +17,7 @@ image:
   # rejected outright by some clusters' admission policies, and a pinned
   # tag makes what a given release actually runs reproducible.
   repository: ghcr.io/gerardo-garcia/prox
-  tag: "0.1.5"
+  tag: "0.1.6"
   pullPolicy: IfNotPresent
 
 nameOverride: ""
@@ -117,7 +117,7 @@ controller:
     # ghcr.io/<repository_owner>/rapid. Pinned to a released version for the
     # same reasons as image.tag above.
     repository: ghcr.io/gerardo-garcia/rapid
-    tag: "0.1.5"
+    tag: "0.1.6"
     pullPolicy: IfNotPresent
 
   # Default test/runtime used when triggering runrapid.py manually, and the
